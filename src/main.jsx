@@ -18,7 +18,7 @@ import PrimeVideo from "./categorías/PrimeVideo";
 import Vix from "./categorías/Vix";
 
 const App = () => {
-  const isMaintenance = true; // Cambiar a false para desactivar el mantenimiento
+  const isMaintenance = false; // Cambiar a false para desactivar el mantenimiento
 
   return (
     <Routes>

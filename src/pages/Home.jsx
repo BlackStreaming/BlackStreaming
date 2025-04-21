@@ -174,7 +174,7 @@ const Home = () => {
                     className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 transition-colors text-sm"
                   >
                     <FaSignOutAlt size={14} />
-                    <span>Logout</span>
+                    <span>Cerrar Sesión</span>
                   </button>
                 </div>
               </div>
@@ -184,13 +184,13 @@ const Home = () => {
                   onClick={() => navigate("/login")}
                   className="px-3 py-1.5 text-sm hover:text-cyan-400 transition-colors"
                 >
-                  Login
+                  Iniciar Sesión
                 </button>
                 <button
                   onClick={() => navigate("/register")}
                   className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 hover:opacity-90 transition-opacity text-sm"
                 >
-                  Register
+                  Registerarse
                 </button>
               </div>
             )}
@@ -236,7 +236,7 @@ const Home = () => {
                     className="px-3 py-2 text-left rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2 text-red-400"
                   >
                     <FaSignOutAlt />
-                    <span>Logout</span>
+                    <span>Salir</span>
                   </button>
                 </>
               ) : (
@@ -264,7 +264,7 @@ const Home = () => {
         {/* Carrusel Original */}
         <section className="py-6 px-4 text-center">
           <h1 className="text-2xl sm:text-3xl font-bold">
-            Your favorite shows and movies, instantly
+            Tus palataformas favoritas al instante
           </h1>
         </section>
 
@@ -318,9 +318,9 @@ const Home = () => {
         {/* Platforms Section */}
         <section className="py-12 container mx-auto px-4">
           <div className="mb-8 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Streaming Platforms</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Plataformas de Streaming</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
-              Access all your favorite streaming services in one place
+              Acceso a todas tus plataformas favoritas en un solo lugar
             </p>
           </div>
 
@@ -350,7 +350,7 @@ const Home = () => {
           <section className="py-12 bg-gradient-to-r from-gray-800 to-gray-900">
             <div className="container mx-auto px-4 text-center">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">
-                Ready to start streaming?
+                Listo para adquirir?
               </h2>
               <p className="text-gray-400 max-w-2xl mx-auto mb-6">
                 Join thousands of satisfied users accessing all their favorite platforms
@@ -360,7 +360,7 @@ const Home = () => {
                 onClick={() => navigate("/register")}
                 className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-500 hover:opacity-90 transition-opacity font-medium"
               >
-                Get Started - It's Free
+                Registrate - Gratis por tiempo limitado
               </button>
             </div>
           </section>
@@ -376,10 +376,10 @@ const Home = () => {
               <span className="text-sm font-medium">BlackStreaming</span>
             </div>
             <div className="text-sm text-gray-400 mb-4 md:mb-0">
-              © {new Date().getFullYear()} BlackStreaming. All rights reserved.
+              © {new Date().getFullYear()} BlackStreaming. Todos los Derechos Reservados.
             </div>
             <div className="text-sm text-gray-400">
-              Developed by Saiph
+              Desarrollado por Saiph
             </div>
           </div>
         </div>

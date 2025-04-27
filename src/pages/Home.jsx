@@ -28,7 +28,7 @@ import maxLogo from "../catalogo/max.png";
 import primeVideoLogo from "../catalogo/prime-video.png";
 import vixLogo from "../catalogo/vix.png";
 import CanvaLogo from "../catalogo/Canva.png";
-import ChatGPTlOGO from "../catalogo/ChatGPT.PNG";
+import ChatGPTlOGO from "../catalogo/ChatGPT.png";
 import CrunchyrollLogo from "../catalogo/crunchyroll.png";
 import RedesSocialesLogo from "../catalogo/redessociales.png";
 

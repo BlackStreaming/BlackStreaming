@@ -5,7 +5,7 @@ import "./index.css";
 import Maintenance from "./pages/Maintenance"; // Nueva página de mantenimiento
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
+import Register from "./pages/register";
 import DashboardUser from "./pages/DashboardUser";
 import DashboardAffiliate from "./pages/DashboardAffiliate";
 import DashboardProvider from "./pages/DashboardProvider";
@@ -18,7 +18,7 @@ import PrimeVideo from "./categorías/PrimeVideo";
 import Vix from "./categorías/Vix";
 
 const App = () => {
-  const isMaintenance = false; // Cambiar a false para desactivar el mantenimiento
+  const isMaintenance = true; // Cambiar a false para desactivar el mantenimiento
 
   return (
     <Routes>

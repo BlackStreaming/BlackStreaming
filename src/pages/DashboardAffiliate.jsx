@@ -143,7 +143,6 @@ const DashboardAffiliate = () => {
     fetchOrCreateAffiliateData();
   }, [userId, email, userName]);
 
-<<<<<<< HEAD
   // Escuchar recargas y actualizar saldo cuando se aprueban
   useEffect(() => {
     if (!userId) return;
@@ -196,32 +195,6 @@ const DashboardAffiliate = () => {
     });
 
     return () => unsubscribe();
-=======
-  // Cargar recargas
-  useEffect(() => {
-    if (!userId) return;
-
-    const fetchTopUps = async () => {
-      try {
-        const topUpsRef = collection(db, "pendingTopUps");
-        const q = query(topUpsRef, where("userId", "==", userId));
-        const topUpsSnapshot = await getDocs(q);
-        
-        const topUpsList = topUpsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().requestedAt?.toDate() || new Date()
-        }));
-
-        setTopUps(topUpsList);
-      } catch (error) {
-        console.error("Error al obtener recargas:", error);
-        setError("Error al cargar recargas");
-      }
-    };
-
-    fetchTopUps();
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
   }, [userId]);
 
   // Escuchar cambios en usuarios referidos recientes
@@ -272,22 +245,13 @@ const DashboardAffiliate = () => {
   const handleTopUpRequest = async () => {
     try {
       if (!amount || isNaN(amount)) {
-<<<<<<< HEAD
         setError("Ingrese un monto válido");
-=======
-        alert("Ingrese un monto válido");
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         return;
       }
 
       const amountNumber = parseFloat(amount);
-<<<<<<< HEAD
       if (amountNumber < 10) {
         setError("El monto mínimo de recarga es S/ 10.00");
-=======
-      if (amountNumber <= 0) {
-        alert("El monto debe ser mayor a 0");
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         return;
       }
 
@@ -296,31 +260,15 @@ const DashboardAffiliate = () => {
         username: userName,
         amount: amountNumber,
         status: "pendiente",
-<<<<<<< HEAD
         requestedAt: serverTimestamp(),
         processed: false // Añadimos el campo processed
       });
 
-=======
-        requestedAt: serverTimestamp()
-      });
-
-      setTopUps(prev => [...prev, {
-        amount: amountNumber,
-        status: "pendiente",
-        date: new Date()
-      }]);
-
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
       setAmount("");
       alert("Solicitud de recarga enviada correctamente");
     } catch (error) {
       console.error("Error al solicitar recarga:", error);
-<<<<<<< HEAD
       setError("Error al enviar solicitud de recarga");
-=======
-      alert("Error al enviar solicitud de recarga");
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
     }
   };
 
@@ -328,7 +276,6 @@ const DashboardAffiliate = () => {
   const handleRenewal = async (order) => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       setError(null);
 
       // Verificar saldo suficiente
@@ -393,29 +340,6 @@ const DashboardAffiliate = () => {
     } catch (error) {
       console.error("Error al renovar el pedido:", error);
       setError("Error al renovar el pedido: " + error.message);
-=======
-      const userRef = doc(db, "users", userId);
-      
-      const newOrder = {
-        ...order,
-        startDate: serverTimestamp(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        renewedAt: serverTimestamp(),
-        status: "active"
-      };
-
-      await updateDoc(userRef, {
-        orders: [...orders, newOrder],
-        balance: balance - order.price // Restar del balance
-      });
-
-      setOrders(prev => [...prev, newOrder]);
-      setBalance(prev => prev - order.price);
-      alert("¡Pedido renovado exitosamente!");
-    } catch (error) {
-      console.error("Error al renovar el pedido:", error);
-      setError("Error al renovar el pedido");
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
     } finally {
       setLoading(false);
     }
@@ -580,11 +504,7 @@ const DashboardAffiliate = () => {
                 <h4 className="font-medium text-cyan-400 mb-2">Enlace de afiliado:</h4>
                 <p className="text-sm bg-gray-800 p-2 rounded border border-gray-600 overflow-x-auto text-gray-300">
                   {affiliateCode 
-<<<<<<< HEAD
                     ? `https://blackkstreaming.com/registro?ref=${affiliateCode}`
-=======
-                    ? `https://blackstreaming.com/registro?ref=${affiliateCode}`
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     : "Generando enlace..."}
                 </p>
               </div>
@@ -601,31 +521,19 @@ const DashboardAffiliate = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-<<<<<<< HEAD
                     placeholder="Mínimo S/ 10.00"
                     min="10"
-=======
-                    placeholder="Ej. 50.00"
-                    min="1"
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     step="0.01"
                   />
                 </div>
                 
                 <button
                   onClick={handleTopUpRequest}
-<<<<<<< HEAD
                   disabled={!amount || parseFloat(amount) < 10}
                   className={`w-full py-3 px-4 rounded-lg font-medium ${
                     amount && parseFloat(amount) >= 10
                       ? "bg-cyan-600 hover:bg-cyan-700 text-white"
                       : "bg-gray-600 text-gray-400 cursor-not-allowed"
-=======
-                  disabled={!amount}
-                  className={`w-full py-3 px-4 rounded-lg font-medium ${
-                    amount ? "bg-cyan-600 hover:bg-cyan-700 text-white" : 
-                    "bg-gray-600 text-gray-400 cursor-not-allowed"
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   }`}
                 >
                   Solicitar recarga
@@ -634,7 +542,6 @@ const DashboardAffiliate = () => {
 
               <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
                 <h3 className="text-lg font-semibold text-white mb-4">Pedidos recientes</h3>
-<<<<<<< HEAD
                 {orders.slice(0, 3).map((order, index) => {
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   return (
@@ -653,25 +560,6 @@ const DashboardAffiliate = () => {
                     </div>
                   );
                 })}
-=======
-                {orders.slice(0, 3).map((order, index) => (
-                  <div key={index} className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <p className="font-medium text-white">{order.productName}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === 'active' ? 'bg-green-900 text-green-400' :
-                        order.status === 'pending' ? 'bg-yellow-900 text-yellow-400' :
-                        'bg-red-900 text-red-400'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                      Vence: {formatDate(order.endDate)}
-                    </p>
-                  </div>
-                ))}
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                 {orders.length === 0 && (
                   <p className="text-gray-400 py-2">No tienes pedidos recientes</p>
                 )}
@@ -694,36 +582,23 @@ const DashboardAffiliate = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-<<<<<<< HEAD
                     placeholder="Mínimo S/ 10.00"
                     min="10"
-=======
-                    placeholder="Ej. 50.00"
-                    min="1"
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     step="0.01"
                   />
                 </div>
                 
                 <button
                   onClick={handleTopUpRequest}
-<<<<<<< HEAD
                   disabled={!amount || parseFloat(amount) < 10}
                   className={`w-full py-3 px-4 rounded-lg font-medium ${
                     amount && parseFloat(amount) >= 10
                       ? "bg-cyan-600 hover:bg-cyan-700 text-white"
                       : "bg-gray-600 text-gray-400 cursor-not-allowed"
-=======
-                  disabled={!amount}
-                  className={`w-full py-3 px-4 rounded-lg font-medium ${
-                    amount ? "bg-cyan-600 hover:bg-cyan-700 text-white" : 
-                    "bg-gray-600 text-gray-400 cursor-not-allowed"
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   }`}
                 >
                   Solicitar recarga
                 </button>
-<<<<<<< HEAD
 
                 {/* Instrucciones de método de pago */}
                 <div className="mt-6 bg-gray-700 p-4 rounded-lg border border-gray-600">
@@ -746,8 +621,6 @@ const DashboardAffiliate = () => {
                     <FiMessageCircle className="mr-2" /> Confirmar por WhatsApp
                   </a>
                 </div>
-=======
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               </div>
             </div>
 
@@ -762,7 +635,6 @@ const DashboardAffiliate = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
-<<<<<<< HEAD
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acción</th>
                       </tr>
                     </thead>
@@ -801,26 +673,6 @@ const DashboardAffiliate = () => {
                           </tr>
                         );
                       })}
-=======
-                      </tr>
-                    </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
-                      {topUps.map((topUp, index) => (
-                        <tr key={index} className="hover:bg-gray-700 transition-colors">
-                          <td className="px-4 py-4 whitespace-nowrap text-white">S/ {topUp.amount?.toFixed(2) || '0.00'}</td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              topUp.status === "aprobado" ? "bg-green-900 text-green-400" :
-                              topUp.status === "pendiente" ? "bg-yellow-900 text-yellow-400" :
-                              "bg-red-900 text-red-400"
-                            }`}>
-                              {topUp.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-gray-400">{formatDate(topUp.date)}</td>
-                        </tr>
-                      ))}
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     </tbody>
                   </table>
                 </div>
@@ -842,7 +694,6 @@ const DashboardAffiliate = () => {
             {orders.length > 0 ? (
               <div className="space-y-4">
                 {orders.map((order, index) => {
-<<<<<<< HEAD
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   
@@ -868,38 +719,13 @@ const DashboardAffiliate = () => {
                     `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
                     `*Precio:* S/ ${price.toFixed(2)}\n` +
                     `*Estado:* ${isActive ? 'Activo' : 'Expirado'}\n` +
-=======
-                  const price = typeof order.price === 'number' ? order.price : 
-                               order.price ? parseFloat(order.price) : 0;
-                  
-                  const statusIcon = {
-                    'active': <FiCheckCircle className="text-green-400" />,
-                    'pending': <FiClock className="text-yellow-400" />,
-                    'expired': <FiAlertCircle className="text-red-400" />
-                  }[order.status] || <FiClock className="text-gray-400" />;
-
-                  const whatsappMessage = encodeURIComponent(
-                    `*Información del Pedido - ${order.productName || 'Sin nombre'}*\n\n` +
-                    `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
-                    `*Producto:* ${order.productName || 'No especificado'}\n` +
-                    `*Precio:* S/ ${price.toFixed(2)}\n` +
-                    `*Estado:* ${order.status || 'active'}\n` +
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                     `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
                     `*Detalles de la Cuenta:*\n` +
                     `📧 *Email:* ${order.account?.email || 'No especificado'}\n` +
                     `🔑 *Contraseña:* ${order.account?.password || 'No especificado'}\n` +
                     `👤 *Perfil:* ${order.account?.profile || 'No especificado'}\n\n` +
-<<<<<<< HEAD
                     `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
-=======
-                    `*Información del Cliente:*\n` +
-                    `👤 *Nombre:* ${order.client?.name || 'No especificado'}\n` +
-                    `📱 *Teléfono:* ${order.client?.phone || 'No especificado'}\n` +
-                    `📧 *Email:* ${order.client?.email || 'No especificado'}\n\n` +
-                    `*Mensaje adicional:* Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   );
 
                   return (
@@ -932,19 +758,11 @@ const DashboardAffiliate = () => {
                             <div className="space-y-2 text-gray-300">
                               <p>
                                 <span className="font-medium text-gray-400">Email:</span> 
-<<<<<<< HEAD
                                 <span className="block text-white break-all">{order.account?.email || 'No especificado'}</span>
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Contraseña:</span> 
                                 <span className="block text-white break-all">{order.account?.password || 'No especificado'}</span>
-=======
-                                <span className="block text-white">{order.account?.email || 'No especificado'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Contraseña:</span> 
-                                <span className="block text-white">{order.account?.password || 'No especificado'}</span>
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Perfil:</span> 
@@ -964,7 +782,6 @@ const DashboardAffiliate = () => {
                                 <span className="block text-white">{order.provider || 'No especificado'}</span>
                               </p>
                               <p>
-<<<<<<< HEAD
                                 <span className="font-medium text-gray-400">Teléfono del Proveedor:</span> 
                                 <span className="block text-white">{order.providerPhone || 'No especificado'}</span>
                               </p>
@@ -974,22 +791,12 @@ const DashboardAffiliate = () => {
                                   isActive ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'
                                 }`}>
                                   {isActive ? 'Activo' : 'Expirado'}
-=======
-                                <span className="font-medium text-gray-400">Estado:</span> 
-                                <span className={`block px-2 py-1 text-xs rounded-full ${
-                                  order.status === 'active' ? 'bg-green-900 text-green-400' :
-                                  order.status === 'pending' ? 'bg-yellow-900 text-yellow-400' :
-                                  'bg-red-900 text-red-400'
-                                }`}>
-                                  {order.status || 'active'}
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                                 </span>
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Método de Pago:</span> 
                                 <span className="block text-white">{order.paymentMethod || 'No especificado'}</span>
                               </p>
-<<<<<<< HEAD
                               <p>
                                 <span className="font-medium text-gray-400">Fecha de inicio:</span> 
                                 <span className="block text-white">{formatDate(order.startDate)}</span>
@@ -998,8 +805,6 @@ const DashboardAffiliate = () => {
                                 <span className="font-medium text-gray-400">Fecha de vencimiento:</span> 
                                 <span className="block text-white">{formatDate(order.endDate)}</span>
                               </p>
-=======
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             </div>
                           </div>
 
@@ -1028,33 +833,19 @@ const DashboardAffiliate = () => {
                         {/* Botones de acción */}
                         <div className="flex flex-col sm:flex-row gap-3">
                           <a
-<<<<<<< HEAD
                             href={`https://wa.me/${order.providerPhone || order.providerWhatsapp || '51999999999'}?text=${whatsappProviderMessage}`}
-=======
-                            href={`https://wa.me/${order.providerWhatsapp || '51999999999'}?text=${whatsappMessage}`}
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                           >
-<<<<<<< HEAD
                             <FiMessageCircle size={18} /> Contactar Proveedor
-=======
-                            <FiMessageCircle size={18} /> Contactar por WhatsApp
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                           </a>
                           
                           <button
                             onClick={() => handleRenewal(order)}
-<<<<<<< HEAD
                             disabled={loading}
                             className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors ${
                               loading 
-=======
-                            disabled={loading || balance < order.price}
-                            className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-                              loading || balance < order.price 
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                                 ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
                                 : "bg-cyan-600 hover:bg-cyan-700 text-white"
                             }`}
@@ -1064,19 +855,12 @@ const DashboardAffiliate = () => {
 
                           {order.client?.phone && (
                             <a
-<<<<<<< HEAD
                               href={`https://wa.me/${order.client.phone}?text=${whatsappClientMessage}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                             >
                               <FiMessageCircle size={18} /> Contactar Cliente por WhatsApp
-=======
-                              href={`tel:${order.client.phone}`}
-                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                            >
-                              <FiPhone size={18} /> Llamar al Cliente
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             </a>
                           )}
                         </div>
@@ -1125,7 +909,6 @@ const DashboardAffiliate = () => {
                   </thead>
                   <tbody className="bg-gray-800 divide-y divide-gray-600">
                     {referredUsers
-<<<<<<< HEAD
                       .filter(user => {
                         const username = user.username || "";
                         const email = user.email || "";
@@ -1152,24 +935,6 @@ const DashboardAffiliate = () => {
                           </td>
                         </tr>
                       ))}
-=======
-                      .filter(user => 
-                        (user.username && user.username.toLowerCase().includes(searchQuery.toLowerCase())) || 
-                        (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
-                      )
-                      .map((user, index) => (
-                        <tr key={index} className="hover:bg-gray-700 transition-colors">
-                          <td className="px-4 py-4 whitespace-nowrap text-white">{user.username || "Sin nombre"}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-gray-300">{user.email}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-gray-300">{formatDate(user.joinDate)}</td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-400">
-                              Activo
-                            </span>
-                          </td>
-                        </tr>
-                    ))}
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   </tbody>
                 </table>
               </div>
@@ -1183,7 +948,6 @@ const DashboardAffiliate = () => {
           </div>
         );
 
-<<<<<<< HEAD
       case 'ganancias':
         return (
           <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
@@ -1254,78 +1018,6 @@ const DashboardAffiliate = () => {
           </div>
         );
 
-=======
-        case 'ganancias':
-          return (
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-              <h3 className="text-xl font-bold text-white mb-6">Reporte de ganancias</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
-                  <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias hoy</h4>
-                  <p className="text-3xl font-bold text-white">S/ 0.00</p>
-                  <p className="text-sm text-gray-400 mt-2">+0% desde ayer</p>
-                </div>
-                
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
-                  <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias esta semana</h4>
-                  <p className="text-3xl font-bold text-white">S/ 0.00</p>
-                  <p className="text-sm text-gray-400 mt-2">+0% desde la semana pasada</p>
-                </div>
-                
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
-                  <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias totales</h4>
-                  <p className="text-3xl font-bold text-white">S/ {earnings.toFixed(2)}</p>
-                  <p className="text-sm text-gray-400 mt-2">{referredUsers.length} referidos</p>
-                </div>
-              </div>
-              
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                  <FiTrendingUp className="mr-2 text-cyan-400" /> Historial de comisiones
-                </h4>
-                
-                {referredUsers.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-600">
-                      <thead className="bg-gray-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Referido</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Origen</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-gray-700 divide-y divide-gray-600">
-                        {referredUsers.map((user, index) => (
-                          <tr key={index} className="hover:bg-gray-600 transition-colors">
-                            <td className="px-4 py-4 whitespace-nowrap text-white">{user.username || "Usuario sin nombre"}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-gray-300">{formatDate(user.joinDate)}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-white">S/ 0.00</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-gray-300">Registro</td>
-                            <td className="px-4 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-400">
-                                Pendiente
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
-                    <p className="text-gray-400">No hay comisiones registradas</p>
-                    <p className="text-sm text-gray-500 mt-1">Gana comisiones cuando tus referidos realicen compras</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-  
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         case 'configuracion':
           return (
             <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
@@ -1410,7 +1102,6 @@ const DashboardAffiliate = () => {
               </div>
             </div>
           );
-<<<<<<< HEAD
 
       default:
         return (
@@ -1537,131 +1228,3 @@ const DashboardAffiliate = () => {
 };
 
 export default DashboardAffiliate;
-=======
-  
-        default:
-          return (
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-              <FiAlertCircle className="mx-auto text-4xl text-yellow-500 mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
-              <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
-              <button
-                onClick={() => setActiveSection('inicio')}
-                className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
-              >
-                Volver al inicio
-              </button>
-            </div>
-          );
-      }
-    };
-  
-    // Renderizar el dashboard completo
-    return (
-      <div className="min-h-screen bg-gray-900 text-gray-200">
-        {/* Mobile menu button */}
-        <div className="md:hidden fixed top-4 left-4 z-50">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none"
-          >
-            <FiMenu className="text-xl" />
-          </button>
-        </div>
-        
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-800 overflow-y-auto`}>
-          <div className="p-4 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="md:hidden p-1 rounded-lg hover:bg-gray-700"
-              >
-                <FiX className="text-lg" />
-              </button>
-            </div>
-            
-            <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-700 rounded-lg">
-              <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="font-medium text-white">{userName}</p>
-                <p className="text-xs text-gray-400 truncate">{email}</p>
-              </div>
-            </div>
-            
-            <nav className="flex-1 space-y-1">
-              <button
-                onClick={() => setActiveSection('inicio')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'inicio' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiHome /> <span>Inicio</span>
-              </button>
-              
-              <button
-                onClick={() => setActiveSection('recargas')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'recargas' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiDollarSign /> <span>Recargas</span>
-              </button>
-              
-              <button
-                onClick={() => setActiveSection('pedidos')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'pedidos' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiShoppingCart /> <span>Mis pedidos</span>
-              </button>
-              
-              <button
-                onClick={() => setActiveSection('referidos')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'referidos' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiUsers /> <span>Referidos</span>
-              </button>
-              
-              <button
-                onClick={() => setActiveSection('ganancias')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'ganancias' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiTrendingUp /> <span>Ganancias</span>
-              </button>
-              
-              <button
-                onClick={() => setActiveSection('configuracion')}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activeSection === 'configuracion' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-              >
-                <FiSettings /> <span>Configuración</span>
-              </button>
-            </nav>
-            
-            <div className="mt-auto pt-4">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-              >
-                <FiLogOut /> <span>Cerrar sesión</span>
-              </button>
-            </div>
-          </div>
-        </aside>
-        
-        {/* Main content */}
-        <main className="md:ml-64 p-4 pt-20 md:pt-4">
-          {renderContent()}
-        </main>
-        
-        {/* Overlay for mobile menu */}
-        {menuOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
-            onClick={() => setMenuOpen(false)}
-          ></div>
-        )}
-      </div>
-    );
-  };
-  
-  export default DashboardAffiliate;
->>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2

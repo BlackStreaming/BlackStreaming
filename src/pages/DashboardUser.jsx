@@ -28,8 +28,12 @@ import {
   getDoc, 
   setDoc,
   updateDoc,
+<<<<<<< HEAD
   serverTimestamp,
   onSnapshot
+=======
+  serverTimestamp
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +56,7 @@ const DashboardUser = () => {
   const handleRenewal = async (order) => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       setError(null);
 
       // Verificar saldo suficiente
@@ -116,6 +121,27 @@ const DashboardUser = () => {
     } catch (error) {
       console.error("Error al renovar el pedido:", error);
       setError("Error al renovar el pedido: " + error.message);
+=======
+      const userRef = doc(db, "users", userId);
+      
+      const newOrder = {
+        ...order,
+        startDate: serverTimestamp(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        renewedAt: serverTimestamp(),
+        status: "active"
+      };
+
+      await updateDoc(userRef, {
+        orders: [...orders, newOrder]
+      });
+
+      setOrders(prev => [...prev, newOrder]);
+      alert("¡Pedido renovado exitosamente!");
+    } catch (error) {
+      console.error("Error al renovar el pedido:", error);
+      setError("Error al renovar el pedido");
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
     } finally {
       setLoading(false);
     }
@@ -139,7 +165,10 @@ const DashboardUser = () => {
         navigate("/login");
       } else {
         setUserId(user.uid);
+<<<<<<< HEAD
         setEmail(user.email || "No especificado");
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         setLoading(false);
       }
     });
@@ -153,6 +182,7 @@ const DashboardUser = () => {
     const fetchUserData = async () => {
       try {
         const userDocRef = doc(db, "users", userId);
+<<<<<<< HEAD
         const unsubscribe = onSnapshot(userDocRef, (userDoc) => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -167,6 +197,46 @@ const DashboardUser = () => {
           setError("Error al cargar datos del usuario");
         });
         return unsubscribe;
+=======
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserName(userData.username || "Usuario");
+          setEmail(userData.email || "No especificado");
+          setBalance(Number(userData.balance) || 0);
+          
+          // Cargar pedidos
+          if (userData.orders) {
+            const formattedOrders = userData.orders.map(order => ({
+              ...order,
+              startDate: order.startDate?.toDate?.() || new Date(),
+              endDate: order.endDate?.toDate?.() || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              // Asegurando que todos los campos tengan valores por defecto
+              account: {
+                email: order.account?.email || 'No especificado',
+                password: order.account?.password || 'No especificado',
+                profile: order.account?.profile || 'No especificado',
+                ...order.account
+              },
+              client: {
+                name: order.client?.name || 'No especificado',
+                phone: order.client?.phone || 'No especificado',
+                email: order.client?.email || 'No especificado',
+                ...order.client
+              },
+              productName: order.productName || 'Producto sin nombre',
+              price: order.price || 0,
+              provider: order.provider || 'No especificado',
+              providerWhatsapp: order.providerWhatsapp || '51999999999',
+              paymentMethod: order.paymentMethod || 'No especificado',
+              status: order.status || 'active',
+              orderId: order.orderId || `BS-${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+            }));
+            setOrders(formattedOrders);
+          }
+        }
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
       } catch (error) {
         console.error("Error al obtener datos del usuario:", error);
         setError("Error al cargar datos del usuario");
@@ -176,6 +246,7 @@ const DashboardUser = () => {
     fetchUserData();
   }, [userId]);
 
+<<<<<<< HEAD
   // Cargar pedidos desde la colección sales
   useEffect(() => {
     if (!userId) return;
@@ -234,10 +305,13 @@ const DashboardUser = () => {
     fetchOrders();
   }, [userId]);
 
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
   // Cargar recargas
   useEffect(() => {
     if (!userId) return;
 
+<<<<<<< HEAD
     const fetchTopUps = () => {
       const q = query(
         collection(db, "pendingTopUps"),
@@ -257,6 +331,25 @@ const DashboardUser = () => {
       });
 
       return unsubscribe;
+=======
+    const fetchTopUps = async () => {
+      try {
+        const topUpsRef = collection(db, "pendingTopUps");
+        const q = query(topUpsRef, where("userId", "==", userId));
+        const topUpsSnapshot = await getDocs(q);
+        
+        const topUpsList = topUpsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().requestedAt?.toDate() || new Date()
+        }));
+
+        setTopUps(topUpsList);
+      } catch (error) {
+        console.error("Error al obtener recargas:", error);
+        setError("Error al cargar recargas");
+      }
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
     };
 
     fetchTopUps();
@@ -266,13 +359,22 @@ const DashboardUser = () => {
   const handleTopUpRequest = async () => {
     try {
       if (!amount || isNaN(amount)) {
+<<<<<<< HEAD
         setError("Ingrese un monto válido");
+=======
+        alert("Ingrese un monto válido");
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         return;
       }
 
       const amountNumber = parseFloat(amount);
+<<<<<<< HEAD
       if (amountNumber < 10) {
         setError("El monto mínimo de recarga es S/ 10.00");
+=======
+      if (amountNumber <= 0) {
+        alert("El monto debe ser mayor a 0");
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
         return;
       }
 
@@ -281,20 +383,37 @@ const DashboardUser = () => {
         username: userName,
         amount: amountNumber,
         status: "pendiente",
+<<<<<<< HEAD
         requestedAt: serverTimestamp(),
       });
 
+=======
+        requestedAt: serverTimestamp()
+      });
+
+      setTopUps(prev => [...prev, {
+        amount: amountNumber,
+        status: "pendiente",
+        date: new Date()
+      }]);
+
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
       setAmount("");
       alert("Solicitud de recarga enviada correctamente");
     } catch (error) {
       console.error("Error al solicitar recarga:", error);
+<<<<<<< HEAD
       setError("Error al enviar solicitud de recarga");
+=======
+      alert("Error al enviar solicitud de recarga");
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
     }
   };
 
   // Formatear fecha
   const formatDate = (date) => {
     if (!date) return "No especificada";
+<<<<<<< HEAD
     try {
       const d = date instanceof Date ? date : new Date(date);
       if (isNaN(d.getTime())) return "Fecha inválida";
@@ -309,6 +428,16 @@ const DashboardUser = () => {
       console.error("Error formatting date:", err);
       return "Fecha inválida";
     }
+=======
+    const d = date.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
   };
 
   // Renderizar contenido según la página activa
@@ -328,10 +457,17 @@ const DashboardUser = () => {
           <h3 className="text-xl font-bold text-white mb-2">Error</h3>
           <p className="text-gray-300 mb-4">{error}</p>
           <button
+<<<<<<< HEAD
             onClick={() => setError(null)}
             className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
           >
             Aceptar
+=======
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+          >
+            Recargar
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
           </button>
         </div>
       );
@@ -341,9 +477,13 @@ const DashboardUser = () => {
       case "inicio":
         return (
           <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
+<<<<<<< HEAD
             <h2 className="text-2xl font-bold text-white mb-6">
               Bienvenido, <span className="text-cyan-400">{userName}</span>
             </h2>
+=======
+            <h2 className="text-2xl font-bold text-white mb-6">Bienvenido, <span className="text-cyan-400">{userName}</span></h2>
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
@@ -368,16 +508,21 @@ const DashboardUser = () => {
               <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Pedidos activos</h3>
                 <p className="text-3xl font-bold text-white">
+<<<<<<< HEAD
                   {orders.filter(o => {
                     const endDate = new Date(o.endDate);
                     return endDate > new Date() && o.status === "completed";
                   }).length}
+=======
+                  {orders.filter(o => o.status === 'active').length}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                 </p>
               </div>
             </div>
             
             <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
               <h3 className="text-lg font-semibold text-white mb-3">Pedidos recientes</h3>
+<<<<<<< HEAD
               {orders.slice(0, 3).map((order, index) => {
                 const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                 return (
@@ -407,6 +552,28 @@ const DashboardUser = () => {
                   Ver todos los pedidos
                 </button>
               )}
+=======
+              {orders.slice(0, 3).map((order, index) => (
+                <div key={index} className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors">
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium text-white">{order.productName}</p>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      order.status === 'active' ? 'bg-green-900 text-green-400' :
+                      order.status === 'pending' ? 'bg-yellow-900 text-yellow-400' :
+                      'bg-red-900 text-red-400'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Vence: {formatDate(order.endDate)}
+                  </p>
+                </div>
+              ))}
+              {orders.length === 0 && (
+                <p className="text-gray-400 py-2">No tienes pedidos recientes</p>
+              )}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
             </div>
           </div>
         );
@@ -425,24 +592,37 @@ const DashboardUser = () => {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+<<<<<<< HEAD
                     placeholder="Mínimo S/ 10.00"
                     min="10"
+=======
+                    placeholder="Ej. 50.00"
+                    min="1"
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     step="0.01"
                   />
                 </div>
                 
                 <button
                   onClick={handleTopUpRequest}
+<<<<<<< HEAD
                   disabled={!amount || parseFloat(amount) < 10}
                   className={`w-full py-3 px-4 rounded-lg font-medium ${
                     amount && parseFloat(amount) >= 10
                       ? "bg-cyan-600 hover:bg-cyan-700 text-white"
                       : "bg-gray-600 text-gray-400 cursor-not-allowed"
+=======
+                  disabled={!amount}
+                  className={`w-full py-3 px-4 rounded-lg font-medium ${
+                    amount ? "bg-cyan-600 hover:bg-cyan-700 text-white" : 
+                    "bg-gray-600 text-gray-400 cursor-not-allowed"
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   }`}
                 >
                   Solicitar recarga
                 </button>
               </div>
+<<<<<<< HEAD
 
               {/* Instrucciones de método de pago */}
               <div className="mt-6 bg-gray-700 p-4 rounded-lg border border-gray-600 max-w-md mx-auto">
@@ -465,6 +645,8 @@ const DashboardUser = () => {
                   <FiMessageCircle className="mr-2" /> Confirmar por WhatsApp
                 </a>
               </div>
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
             </div>
 
             <div className="bg-gray-800 p-6 rounded-lg shadow-md">
@@ -483,7 +665,11 @@ const DashboardUser = () => {
                     <tbody className="bg-gray-800 divide-y divide-gray-600">
                       {topUps.map((topUp, index) => (
                         <tr key={index} className="hover:bg-gray-700 transition-colors">
+<<<<<<< HEAD
                           <td className="px-4 py-4 whitespace-nowrap text-white">S/ {topUp.amount.toFixed(2)}</td>
+=======
+                          <td className="px-4 py-4 whitespace-nowrap text-white">S/ {topUp.amount?.toFixed(2) || '0.00'}</td>
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                               topUp.status === "aprobado" ? "bg-green-900 text-green-400" :
@@ -517,6 +703,7 @@ const DashboardUser = () => {
             {orders.length > 0 ? (
               <div className="space-y-4">
                 {orders.map((order, index) => {
+<<<<<<< HEAD
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   
@@ -542,13 +729,38 @@ const DashboardUser = () => {
                     `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
                     `*Precio:* S/ ${price.toFixed(2)}\n` +
                     `*Estado:* ${isActive ? 'Activo' : 'Expirado'}\n` +
+=======
+                  const price = typeof order.price === 'number' ? order.price : 
+                               order.price ? parseFloat(order.price) : 0;
+                  
+                  const statusIcon = {
+                    'active': <FiCheckCircle className="text-green-400" />,
+                    'pending': <FiClock className="text-yellow-400" />,
+                    'expired': <FiAlertCircle className="text-red-400" />
+                  }[order.status] || <FiClock className="text-gray-400" />;
+
+                  const whatsappMessage = encodeURIComponent(
+                    `*Información del Pedido - ${order.productName || 'Sin nombre'}*\n\n` +
+                    `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
+                    `*Producto:* ${order.productName || 'No especificado'}\n` +
+                    `*Precio:* S/ ${price.toFixed(2)}\n` +
+                    `*Estado:* ${order.status || 'active'}\n` +
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                     `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                     `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
                     `*Detalles de la Cuenta:*\n` +
                     `📧 *Email:* ${order.account?.email || 'No especificado'}\n` +
                     `🔑 *Contraseña:* ${order.account?.password || 'No especificado'}\n` +
                     `👤 *Perfil:* ${order.account?.profile || 'No especificado'}\n\n` +
+<<<<<<< HEAD
                     `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
+=======
+                    `*Información del Cliente:*\n` +
+                    `👤 *Nombre:* ${order.client?.name || 'No especificado'}\n` +
+                    `📱 *Teléfono:* ${order.client?.phone || 'No especificado'}\n` +
+                    `📧 *Email:* ${order.client?.email || 'No especificado'}\n\n` +
+                    `*Mensaje adicional:* Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                   );
 
                   return (
@@ -591,10 +803,23 @@ const DashboardUser = () => {
                                 <span className="font-medium text-gray-400">Perfil:</span> 
                                 <span className="block text-white">{order.account?.profile || 'No especificado'}</span>
                               </p>
+<<<<<<< HEAD
                             </div>
                           </div>
 
                           {/* Sección de Información del Pedido y Proveedor */}
+=======
+                              {order.account?.additionalInfo && (
+                                <p>
+                                  <span className="font-medium text-gray-400">Info adicional:</span> 
+                                  <span className="block text-white whitespace-pre-line">{order.account.additionalInfo}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Sección de Información del Pedido */}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                           <div className="bg-gray-700 p-4 rounded-lg">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiFileText className="mr-2" /> Información del Pedido
@@ -605,6 +830,7 @@ const DashboardUser = () => {
                                 <span className="block text-white">{order.provider || 'No especificado'}</span>
                               </p>
                               <p>
+<<<<<<< HEAD
                                 <span className="font-medium text-gray-400">Teléfono del Proveedor:</span> 
                                 <span className="block text-white">{order.providerPhone || 'No especificado'}</span>
                               </p>
@@ -614,11 +840,24 @@ const DashboardUser = () => {
                                   isActive ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'
                                 }`}>
                                   {isActive ? 'Activo' : 'Expirado'}
+=======
+                                <span className="font-medium text-gray-400">Estado:</span> 
+                                <span className={`block px-2 py-1 text-xs rounded-full ${
+                                  order.status === 'active' ? 'bg-green-900 text-green-400' :
+                                  order.status === 'pending' ? 'bg-yellow-900 text-yellow-400' :
+                                  'bg-red-900 text-red-400'
+                                }`}>
+                                  {order.status || 'active'}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                                 </span>
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Método de Pago:</span> 
+<<<<<<< HEAD
                                 <span className="block text-white">BlackStreaming</span>
+=======
+                                <span className="block text-white">{order.paymentMethod || 'No especificado'}</span>
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Fecha de inicio:</span> 
@@ -639,12 +878,29 @@ const DashboardUser = () => {
                             <div className="space-y-2 text-gray-300">
                               <p>
                                 <span className="font-medium text-gray-400">Nombre:</span> 
+<<<<<<< HEAD
                                 <span className="block text-white">{order.client?.customerName || 'No especificado'}</span>
+=======
+                                <span className="block text-white">{order.client?.name || 'No especificado'}</span>
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                               </p>
                               <p>
                                 <span className="font-medium text-gray-400">Teléfono:</span> 
                                 <span className="block text-white">{order.client?.phone || 'No especificado'}</span>
                               </p>
+<<<<<<< HEAD
+=======
+                              <p>
+                                <span className="font-medium text-gray-400">Email:</span> 
+                                <span className="block text-white break-all">{order.client?.email || 'No especificado'}</span>
+                              </p>
+                              {order.client?.address && (
+                                <p>
+                                  <span className="font-medium text-gray-400">Dirección:</span> 
+                                  <span className="block text-white">{order.client.address}</span>
+                                </p>
+                              )}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             </div>
                           </div>
                         </div>
@@ -652,12 +908,20 @@ const DashboardUser = () => {
                         {/* Botones de acción */}
                         <div className="flex flex-col sm:flex-row gap-3">
                           <a
+<<<<<<< HEAD
                             href={`https://wa.me/${order.providerPhone}?text=${whatsappProviderMessage}`}
+=======
+                            href={`https://wa.me/${order.providerWhatsapp || '51999999999'}?text=${whatsappMessage}`}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                           >
+<<<<<<< HEAD
                             <FiMessageCircle size={18} /> Contactar Proveedor
+=======
+                            <FiMessageCircle size={18} /> Contactar por WhatsApp
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                           </a>
                           
                           <button
@@ -674,12 +938,19 @@ const DashboardUser = () => {
 
                           {order.client?.phone && (
                             <a
+<<<<<<< HEAD
                               href={`https://wa.me/${order.client.phone}?text=${whatsappClientMessage}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                             >
                               <FiMessageCircle size={18} /> Contactar Cliente por WhatsApp
+=======
+                              href={`tel:${order.client.phone}`}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                            >
+                              <FiPhone size={18} /> Llamar al Cliente
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                             </a>
                           )}
                         </div>
@@ -703,6 +974,7 @@ const DashboardUser = () => {
           <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
             <h3 className="text-xl font-bold text-white mb-6">Configuración de cuenta</h3>
             
+<<<<<<< HEAD
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
@@ -717,6 +989,9 @@ const DashboardUser = () => {
                 console.error("Error updating settings:", error);
               }
             }} className="space-y-4">
+=======
+            <form className="space-y-4">
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               <div>
                 <label className="block text-gray-300 mb-2">Nombre de usuario</label>
                 <input
@@ -724,7 +999,10 @@ const DashboardUser = () => {
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+<<<<<<< HEAD
                   required
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                 />
               </div>
               
@@ -735,7 +1013,10 @@ const DashboardUser = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+<<<<<<< HEAD
                   required
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                 />
               </div>
               
@@ -743,6 +1024,7 @@ const DashboardUser = () => {
                 <label className="block text-gray-300 mb-2">Cambiar contraseña</label>
                 <input
                   type="password"
+<<<<<<< HEAD
                   placeholder="Nueva contraseña (dejar vacío para no cambiar)"
                   className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                   disabled
@@ -752,6 +1034,15 @@ const DashboardUser = () => {
               
               <button
                 type="submit"
+=======
+                  placeholder="Nueva contraseña"
+                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                />
+              </div>
+              
+              <button
+                type="button"
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
                 className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium mt-4"
               >
                 Guardar cambios
@@ -823,28 +1114,44 @@ const DashboardUser = () => {
           
           <nav className="flex-1 space-y-1">
             <button
+<<<<<<< HEAD
               onClick={() => { setActivePage('inicio'); setMenuOpen(false); }}
+=======
+              onClick={() => setActivePage('inicio')}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'inicio' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
             >
               <FiHome /> <span>Inicio</span>
             </button>
             
             <button
+<<<<<<< HEAD
               onClick={() => { setActivePage('recargar'); setMenuOpen(false); }}
+=======
+              onClick={() => setActivePage('recargar')}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'recargar' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
             >
               <FiDollarSign /> <span>Recargar saldo</span>
             </button>
             
             <button
+<<<<<<< HEAD
               onClick={() => { setActivePage('pedidos'); setMenuOpen(false); }}
+=======
+              onClick={() => setActivePage('pedidos')}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'pedidos' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
             >
               <FiShoppingCart /> <span>Mis pedidos</span>
             </button>
             
             <button
+<<<<<<< HEAD
               onClick={() => { setActivePage('configuracion'); setMenuOpen(false); }}
+=======
+              onClick={() => setActivePage('configuracion')}
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'configuracion' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
             >
               <FiSettings /> <span>Configuración</span>

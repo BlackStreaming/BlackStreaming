@@ -27,10 +27,13 @@ import disneyLogo from "../catalogo/disney.png";
 import maxLogo from "../catalogo/max.png";
 import primeVideoLogo from "../catalogo/prime-video.png";
 import vixLogo from "../catalogo/vix.png";
+<<<<<<< HEAD
 import CanvaLogo from "../catalogo/Canva.png";
 import ChatGPTlOGO from "../catalogo/ChatGPT.PNG";
 import CrunchyrollLogo from "../catalogo/crunchyroll.png";
 import RedesSocialesLogo from "../catalogo/redessociales.png";
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
 
 const featuredContent = [
   { src: brooklyn99, title: "Brooklyn Nine-Nine" },
@@ -47,11 +50,14 @@ const platforms = [
   { name: "Max", logo: maxLogo, route: "/max" },
   { name: "Prime Video", logo: primeVideoLogo, route: "/primevideo" },
   { name: "Vix", logo: vixLogo, route: "/vix" },
+<<<<<<< HEAD
   { name: "Canva", logo: CanvaLogo, route: "/Canva" },
   { name: "ChatGPT", logo: ChatGPTlOGO, route: "/ChatGPT" },
   { name: "Crunchyroll", logo: CrunchyrollLogo, route: "/crunchyroll" },
   { name: "Redes Sociales", logo: RedesSocialesLogo, route: "/redessociales" },
 
+=======
+>>>>>>> 748be5c87e5ffde26d0e33692db0c6f7a2e9a6d2
 ];
 
 const Home = () => {

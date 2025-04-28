@@ -58,12 +58,16 @@ const DashboardAdmin = () => {
 
   // Verificar autenticación y redirigir si no está autenticado
   useEffect(() => {
+    setLoading(true); // Indica que está cargando mientras se verifica la autenticación
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        navigate("/login");
-      } else {
+      if (user) {
+        // Usuario autenticado
         setEmail(user.email);
         fetchUsername(user.uid);
+        setLoading(false);
+      } else {
+        // No hay usuario, redirigir al login
+        navigate("/login");
         setLoading(false);
       }
     });
@@ -183,14 +187,6 @@ const DashboardAdmin = () => {
         status: "approved",
         updatedAt: serverTimestamp(),
       });
-      // Opcional: Actualizar el saldo del usuario si es necesario
-      // const withdrawal = pendingWithdrawals.find((w) => w.id === withdrawalId);
-      // if (withdrawal?.userId) {
-      //   const userRef = doc(db, "users", withdrawal.userId);
-      //   await updateDoc(userRef, {
-      //     balance: increment(-withdrawal.amount || 0),
-      //   });
-      // }
       setError(null);
       alert("Retiro aprobado exitosamente");
     } catch (error) {
@@ -225,7 +221,7 @@ const DashboardAdmin = () => {
     try {
       setActionLoading((prev) => ({ ...prev, [topUpId]: true }));
       const topUpRef = doc(db, "pendingTopUps", topUpId);
-      const topUp = pendingTopUps.find((t) => T.id === topUpId);
+      const topUp = pendingTopUps.find((t) => t.id === topUpId);
       if (!topUp?.userId) {
         throw new Error("Usuario no encontrado para la recarga");
       }
@@ -406,6 +402,7 @@ const DashboardAdmin = () => {
       );
     }
     if (error) {
+      return unicodes
       return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
           <FiAlertCircle className="mx-auto text-4xl text-red-500 mb-4" />
@@ -920,7 +917,7 @@ const DashboardAdmin = () => {
       default:
         return (
           <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-            <FiAlertCircle className="mx-auto text-4 spodziewane text-yellow-500 mb-4" />
+            <FiAlertCircle className="mx-auto text-4xl text-yellow-500 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
             <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
             <button

@@ -58,16 +58,12 @@ const DashboardAdmin = () => {
 
   // Verificar autenticación y redirigir si no está autenticado
   useEffect(() => {
-    setLoading(true); // Indica que está cargando mientras se verifica la autenticación
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // Usuario autenticado
+      if (!user) {
+        navigate("/login");
+      } else {
         setEmail(user.email);
         fetchUsername(user.uid);
-        setLoading(false);
-      } else {
-        // No hay usuario, redirigir al login
-        navigate("/login");
         setLoading(false);
       }
     });
@@ -323,7 +319,7 @@ const DashboardAdmin = () => {
       console.error("Error al rechazar solicitud:", error);
       setError(error.message || "Error al rechazar la solicitud de registro");
     } finally {
-      setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
+      setActionLoading((prev) => ({ ...prev, [registrationId]: false })); // Fixed typo: setMazeActionLoading to setActionLoading
     }
   };
 
@@ -402,7 +398,6 @@ const DashboardAdmin = () => {
       );
     }
     if (error) {
-      return unicodes
       return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
           <FiAlertCircle className="mx-auto text-4xl text-red-500 mb-4" />

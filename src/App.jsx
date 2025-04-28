@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/register";
@@ -7,11 +7,13 @@ import DashboardUser from "./pages/DashboardUser";
 import DashboardProvider from "./pages/DashboardProvider";
 import DashboardAffiliate from "./pages/DashboardAffiliate";
 import DashboardAdmin from "./pages/DashboardAdmin";
-import ProtectedRoute from "./components/ProtectedRoute"; // Importa el componente de rutas protegidas
-import { auth, db } from "./firebase"; // Firebase configuración
+import NotFound from "./components/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { auth, db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-function App() {
+// Componente para manejar la lógica de navegación y rol
+const AppContent = () => {
   const [role, setRole] = useState(null);
   const navigate = useNavigate();
 
@@ -37,8 +39,6 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-
-      {/* Ruta protegida del Dashboard con detección automática del rol */}
       <Route
         path="/dashboard"
         element={
@@ -50,7 +50,17 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
+  );
+};
+
+// Componente principal que envuelve todo en BrowserRouter
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 

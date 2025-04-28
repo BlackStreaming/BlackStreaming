@@ -66,7 +66,18 @@ const DashboardAffiliate = () => {
   const [orders, setOrders] = useState([]);
   const [configError, setConfigError] = useState("");
   const [configSuccess, setConfigSuccess] = useState("");
+  const [modal, setModal] = useState({ show: false, message: "", title: "" });
   const navigate = useNavigate();
+
+  // Function to show modal
+  const showModal = (title, message) => {
+    setModal({ show: true, title, message });
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setModal({ show: false, message: "", title: "" });
+  };
 
   // Observar cambios de autenticación
   useEffect(() => {
@@ -265,7 +276,7 @@ const DashboardAffiliate = () => {
       });
 
       setAmount("");
-      alert("Solicitud de recarga enviada correctamente");
+      showModal("Éxito", "Solicitud de recarga enviada correctamente");
     } catch (error) {
       console.error("Error al solicitar recarga:", error);
       setError("Error al enviar solicitud de recarga");
@@ -336,7 +347,7 @@ const DashboardAffiliate = () => {
         orderId: `BS-${saleRef.id.slice(0, 8).toUpperCase()}`,
       }]);
 
-      alert("¡Pedido renovado exitosamente!");
+      showModal("Éxito", "¡Pedido renovado exitosamente!");
     } catch (error) {
       console.error("Error al renovar el pedido:", error);
       setError("Error al renovar el pedido: " + error.message);
@@ -409,6 +420,8 @@ const DashboardAffiliate = () => {
       if (!password && newEmail === email) {
         setConfigSuccess("No se realizaron cambios");
       }
+
+      showModal("Éxito", configSuccess);
     } catch (error) {
       console.error("Error al actualizar configuración:", error);
       setConfigError("Error al actualizar la configuración");
@@ -544,14 +557,17 @@ const DashboardAffiliate = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">Pedidos recientes</h3>
                 {orders.slice(0, 3).map((order, index) => {
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
+                  const isOnDemand = order.status === "pending";
                   return (
                     <div key={index} className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors">
                       <div className="flex justify-between items-center">
                         <p className="font-medium text-white">{order.productName}</p>
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          isActive ? "bg-green-900 text-green-400" : "bg-red-900 text-red-400"
+                          isOnDemand ? "bg-yellow-900 text-yellow-400" :
+                          isActive ? "bg-green-900 text-green-400" :
+                          "bg-red-900 text-red-400"
                         }`}>
-                          {isActive ? "Activo" : "Expirado"}
+                          {isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}
                         </span>
                       </div>
                       <p className="text-sm text-gray-400">
@@ -696,8 +712,11 @@ const DashboardAffiliate = () => {
                 {orders.map((order, index) => {
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
+                  const isOnDemand = order.status === "pending";
                   
-                  const statusIcon = isActive
+                  const statusIcon = isOnDemand
+                    ? <FiClock className="text-yellow-400" />
+                    : isActive
                     ? <FiCheckCircle className="text-green-400" />
                     : <FiAlertCircle className="text-red-400" />;
 
@@ -706,10 +725,12 @@ const DashboardAffiliate = () => {
                     `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
                     `*Producto:* ${order.productName || 'No especificado'}\n` +
                     `*Precio:* S/ ${price.toFixed(2)}\n` +
-                    `*Estado:* ${isActive ? 'Activo' : 'Expirado'}\n` +
+                    `*Estado:* ${isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}\n` +
                     `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                     `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
-                    `*Mensaje adicional:* Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`
+                    (isOnDemand
+                      ? `Hola, he comprado un producto a pedido (${order.productName}). ¿En cuántos días estará listo? Por favor, indíqueme los detalles para coordinar.`
+                      : `Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`)
                   );
 
                   const whatsappClientMessage = encodeURIComponent(
@@ -718,13 +739,15 @@ const DashboardAffiliate = () => {
                     `*Producto:* ${order.productName || 'Sin nombre'}\n` +
                     `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
                     `*Precio:* S/ ${price.toFixed(2)}\n` +
-                    `*Estado:* ${isActive ? 'Activo' : 'Expirado'}\n` +
+                    `*Estado:* ${isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}\n` +
                     `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                     `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
-                    `*Detalles de la Cuenta:*\n` +
-                    `📧 *Email:* ${order.account?.email || 'No especificado'}\n` +
-                    `🔑 *Contraseña:* ${order.account?.password || 'No especificado'}\n` +
-                    `👤 *Perfil:* ${order.account?.profile || 'No especificado'}\n\n` +
+                    (isOnDemand
+                      ? `*Nota:* Este pedido está "A pedido". El proveedor se contactará contigo para coordinar los detalles.\n\n`
+                      : `*Detalles de la Cuenta:*\n` +
+                        `📧 *Email:* ${order.account?.email || 'No especificado'}\n` +
+                        `🔑 *Contraseña:* ${order.account?.password || 'No especificado'}\n` +
+                        `👤 *Perfil:* ${order.account?.profile || 'No especificado'}\n\n`) +
                     `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
                   );
 
@@ -756,18 +779,26 @@ const DashboardAffiliate = () => {
                               <FiUser className="mr-2" /> Detalles de la Cuenta
                             </h5>
                             <div className="space-y-2 text-gray-300">
-                              <p>
-                                <span className="font-medium text-gray-400">Email:</span> 
-                                <span className="block text-white break-all">{order.account?.email || 'No especificado'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Contraseña:</span> 
-                                <span className="block text-white break-all">{order.account?.password || 'No especificado'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Perfil:</span> 
-                                <span className="block text-white">{order.account?.profile || 'No especificado'}</span>
-                              </p>
+                              {isOnDemand ? (
+                                <p className="text-gray-400">
+                                  Este pedido está "A pedido". El proveedor se contactará contigo para proporcionarte los detalles.
+                                </p>
+                              ) : (
+                                <>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Email:</span> 
+                                    <span className="block text-white break-all">{order.account?.email || 'No especificado'}</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Contraseña:</span> 
+                                    <span className="block text-white break-all">{order.account?.password || 'No especificado'}</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Perfil:</span> 
+                                    <span className="block text-white">{order.account?.profile || 'No especificado'}</span>
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -788,9 +819,11 @@ const DashboardAffiliate = () => {
                               <p>
                                 <span className="font-medium text-gray-400">Estado:</span> 
                                 <span className={`block px-2 py-1 text-xs rounded-full ${
-                                  isActive ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'
+                                  isOnDemand ? 'bg-yellow-900 text-yellow-400' :
+                                  isActive ? 'bg-green-900 text-green-400' :
+                                  'bg-red-900 text-red-400'
                                 }`}>
-                                  {isActive ? 'Activo' : 'Expirado'}
+                                  {isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}
                                 </span>
                               </p>
                               <p>
@@ -1018,90 +1051,90 @@ const DashboardAffiliate = () => {
           </div>
         );
 
-        case 'configuracion':
-          return (
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-              <h3 className="text-xl font-bold text-white mb-6">Configuración de cuenta</h3>
+      case 'configuracion':
+        return (
+          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
+            <h3 className="text-xl font-bold text-white mb-6">Configuración de cuenta</h3>
+            
+            <form onSubmit={handleUpdateConfig}>
+              {configError && (
+                <div className="bg-red-900 text-red-300 p-3 rounded-lg mb-4 flex items-center">
+                  <FiAlertCircle className="mr-2" /> {configError}
+                </div>
+              )}
               
-              <form onSubmit={handleUpdateConfig}>
-                {configError && (
-                  <div className="bg-red-900 text-red-300 p-3 rounded-lg mb-4 flex items-center">
-                    <FiAlertCircle className="mr-2" /> {configError}
-                  </div>
-                )}
+              {configSuccess && (
+                <div className="bg-green-900 text-green-300 p-3 rounded-lg mb-4 flex items-center">
+                  <FiCheckCircle className="mr-2" /> {configSuccess}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 mb-2">Nombre de usuario</label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  />
+                </div>
                 
-                {configSuccess && (
-                  <div className="bg-green-900 text-green-300 p-3 rounded-lg mb-4 flex items-center">
-                    <FiCheckCircle className="mr-2" /> {configSuccess}
-                  </div>
-                )}
+                <div>
+                  <label className="block text-gray-300 mb-2">Correo electrónico</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  />
+                </div>
                 
-                <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 mb-2">Nueva contraseña</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Dejar en blanco para no cambiar"
+                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  />
+                </div>
+                
+                {password && (
                   <div>
-                    <label className="block text-gray-300 mb-2">Nombre de usuario</label>
-                    <input
-                      type="text"
-                      value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-300 mb-2">Correo electrónico</label>
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-300 mb-2">Nueva contraseña</label>
+                    <label className="block text-gray-300 mb-2">Confirmar nueva contraseña</label>
                     <input
                       type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Dejar en blanco para no cambiar"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     />
                   </div>
-                  
-                  {password && (
-                    <div>
-                      <label className="block text-gray-300 mb-2">Confirmar nueva contraseña</label>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Guardar cambios
-                    </button>
-                  </div>
+                )}
+                
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Guardar cambios
+                  </button>
                 </div>
-              </form>
-              
-              <div className="mt-8 border-t border-gray-700 pt-6">
-                <h4 className="text-lg font-semibold text-white mb-4">Zona peligrosa</h4>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900 hover:bg-red-800 text-white rounded-lg font-medium transition-colors"
-                >
-                  <FiLogOut /> Cerrar sesión
-                </button>
               </div>
+            </form>
+            
+            <div className="mt-8 border-t border-gray-700 pt-6">
+              <h4 className="text-lg font-semibold text-white mb-4">Zona peligrosa</h4>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900 hover:bg-red-800 text-white rounded-lg font-medium transition-colors"
+              >
+                <FiLogOut /> Cerrar sesión
+              </button>
             </div>
-          );
+          </div>
+        );
 
       default:
         return (
@@ -1215,6 +1248,34 @@ const DashboardAffiliate = () => {
       <main className="md:ml-64 p-4 pt-20 md:pt-4">
         {renderContent()}
       </main>
+      
+      {/* Modal for Alerts */}
+      {modal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">{modal.title}</h2>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <FiX />
+                </button>
+              </div>
+              <p className="text-gray-300 mb-6">{modal.message}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                >
+                  Aceptar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Overlay for mobile menu */}
       {menuOpen && (

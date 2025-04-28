@@ -32,6 +32,7 @@ import logo from "../images/logo.png";
 const Spotify = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,18 @@ const Spotify = () => {
   const [detailModal, setDetailModal] = useState(null);
   const [termsModal, setTermsModal] = useState(false);
   const [generalTermsModal, setGeneralTermsModal] = useState(false);
-  const [productsCount, setProductsCount] = useState(0);
+  const [productsCount, setProductsCount] = useState({
+    netflix: 0,
+    spotify: 0,
+    disney: 0,
+    max: 0,
+    primevideo: 0,
+    vix: 0,
+    crunchyroll: 0,
+    canva: 0,
+    chatgpt: 0,
+    redessociales: 0,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -83,6 +95,7 @@ const Spotify = () => {
   }, []);
 
   useEffect(() => {
+    // Fetch Spotify products
     const productsQuery = query(
       collection(db, "products"),
       where("category", "==", "Spotify")
@@ -102,9 +115,10 @@ const Spotify = () => {
             provider: data.provider || "Proveedor no especificado",
             providerId: data.providerId || "",
             providerPhone: data.providerPhone || "",
-            acceptsOrders: true,
+            acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
             type: data.type || "Premium",
+            status: data.status || "En stock",
           };
         });
 
@@ -140,15 +154,76 @@ const Spotify = () => {
         );
 
         setProducts(productsWithProviders);
-        setProductsCount(productsWithProviders.length);
+        setProductsCount((prev) => ({
+          ...prev,
+          spotify: productsWithProviders.length,
+        }));
       },
       (err) => {
-        setError("Error al cargar productos");
+        setError("Error al cargar productos de Spotify");
         console.error(err);
       }
     );
 
-    return () => productsUnsubscribe();
+    // Fetch accounts for Spotify products
+    const accountsQuery = query(
+      collection(db, "spotify_accounts"),
+      where("status", "==", "available")
+    );
+    const accountsUnsubscribe = onSnapshot(
+      accountsQuery,
+      (snapshot) => {
+        const accountsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          productId: doc.data().productId || "",
+          providerId: doc.data().providerId || "",
+        }));
+        setAccounts(accountsData);
+      },
+      (err) => {
+        console.error("Error al cargar cuentas:", err);
+      }
+    );
+
+    // Fetch product counts for other categories
+    const categories = [
+      "Netflix",
+      "Disney",
+      "Max",
+      "Prime Video",
+      "Vix",
+      "Crunchyroll",
+      "Canva",
+      "ChatGPT",
+      "Redes Sociales",
+    ];
+
+    const unsubscribes = categories.map((category) => {
+      const categoryKey = category.toLowerCase().replace(/\s+/g, "");
+      const q = query(
+        collection(db, "products"),
+        where("category", "==", category)
+      );
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          setProductsCount((prev) => ({
+            ...prev,
+            [categoryKey]: snapshot.docs.length,
+          }));
+        },
+        (err) => {
+          console.error(`Error al cargar productos de ${category}:`, err);
+        }
+      );
+    });
+
+    return () => {
+      productsUnsubscribe();
+      accountsUnsubscribe();
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, []);
 
   const handlePurchase = (product) => {
@@ -175,24 +250,6 @@ const Spotify = () => {
     });
   };
 
-  const showDetails = (product) => {
-    setDetailModal({
-      name: product.name,
-      accountDetails: product.accountDetails,
-      provider: product.provider,
-      terms: product.terms,
-    });
-  };
-
-  const showTerms = (product) => {
-    setDetailModal({
-      name: product.name,
-      terms: product.terms,
-      provider: product.provider,
-    });
-    setTermsModal(true);
-  };
-
   const finalizePurchase = async () => {
     if (!document.getElementById("termsCheck").checked) {
       setError("Debes aceptar los términos y condiciones");
@@ -212,129 +269,208 @@ const Spotify = () => {
         throw new Error("El producto no tiene un proveedor asociado");
       }
 
-      const accountData = await runTransaction(db, async (transaction) => {
-        const productRef = doc(db, "products", selectedProduct.id);
-        const productDoc = await transaction.get(productRef);
-        if (!productDoc.exists()) {
-          throw new Error("Producto no encontrado");
-        }
-        const productData = productDoc.data();
-        if (productData.availableAccounts <= 0) {
-          throw new Error("No hay cuentas disponibles para este producto");
-        }
-
-        const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
-        const availableAccountsQuery = query(
-          accountsRef,
-          where("status", "==", "available"),
-          limit(1)
-        );
-        const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
-        if (availableAccountsSnapshot.empty) {
-          throw new Error("No hay cuentas disponibles en la subcolección");
-        }
-        const accountDoc = availableAccountsSnapshot.docs[0];
-        const accountRef = accountDoc.ref;
-        const accountData = accountDoc.data();
-
-        const userRef = doc(db, "users", user.id);
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          throw new Error("Usuario no encontrado");
-        }
-
-        let providerDoc = null;
-        let providerPhone = selectedProduct.providerPhone || "";
-        if (selectedProduct.providerId && !providerPhone) {
-          const providerRef = doc(db, "users", selectedProduct.providerId);
-          providerDoc = await transaction.get(providerRef);
-          if (providerDoc.exists()) {
-            providerPhone = providerDoc.data().phoneNumber || "";
+      let accountData = null;
+      if (selectedProduct.status === "En stock") {
+        // Handle "En stock" products
+        accountData = await runTransaction(db, async (transaction) => {
+          const productRef = doc(db, "products", selectedProduct.id);
+          const productDoc = await transaction.get(productRef);
+          if (!productDoc.exists()) {
+            throw new Error("Producto no encontrado");
           }
-        }
+          const productData = productDoc.data();
+          if (productData.availableAccounts <= 0) {
+            throw new Error("No hay cuentas disponibles para este producto");
+          }
 
-        transaction.update(accountRef, {
-          status: "unavailable",
-          assignedTo: user.id,
-          assignedAt: new Date().toISOString(),
-        });
+          const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
+          const availableAccountsQuery = query(
+            accountsRef,
+            where("status", "==", "available"),
+            limit(1)
+          );
+          const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
+          if (availableAccountsSnapshot.empty) {
+            throw new Error("No hay cuentas disponibles en la subcolección");
+          }
+          const accountDoc = availableAccountsSnapshot.docs[0];
+          const accountRef = accountDoc.ref;
+          const accountData = accountDoc.data();
 
-        transaction.update(productRef, {
-          availableAccounts: increment(-1),
-          stock: increment(-1),
-        });
+          const userRef = doc(db, "users", user.id);
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists()) {
+            throw new Error("Usuario no encontrado");
+          }
 
-        const userBalance = Number(userDoc.data().balance) || 0;
-        const newBalance = userBalance - selectedProduct.price;
-        if (newBalance < 0) {
-          throw new Error("Saldo insuficiente");
-        }
-        const userOrders = userDoc.data().orders || [];
-        const orderData = {
-          productId: selectedProduct.id,
-          productName: selectedProduct.name,
-          price: selectedProduct.price,
-          provider: selectedProduct.provider,
-          providerId: selectedProduct.providerId,
-          providerPhone: providerPhone,
-          status: "active",
-          customerName: purchaseModal.customerName,
-          customerId: user.id,
-          phoneNumber: purchaseModal.phoneNumber,
-          createdAt: new Date().toISOString(),
-          accountDetails: {
-            email: accountData.email || "No proporcionado",
-            password: accountData.password || "No proporcionado",
-            profile: accountData.profile || "No proporcionado",
-          },
-          terms: selectedProduct.terms,
-          type: "spotify",
-        };
-        transaction.update(userRef, {
-          balance: newBalance,
-          orders: [...userOrders, orderData],
-        });
+          let providerDoc = null;
+          let providerPhone = selectedProduct.providerPhone || "";
+          if (selectedProduct.providerId && !providerPhone) {
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            providerDoc = await transaction.get(providerRef);
+            if (providerDoc.exists()) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+          }
 
-        const salesRef = doc(collection(db, "sales"));
-        transaction.set(salesRef, {
-          ...orderData,
-          provider: selectedProduct.provider,
-          providerId: selectedProduct.providerId,
-          providerPhone: providerPhone,
-          saleDate: new Date().toISOString(),
-          status: "completed",
-          accountDetails: {
-            email: accountData.email || "No proporcionado",
-            password: accountData.password || "No proporcionado",
-            profile: accountData.profile || "No proporcionado",
-          },
-        });
+          transaction.update(accountRef, {
+            status: "unavailable",
+            assignedTo: user.id,
+            assignedAt: new Date().toISOString(),
+          });
 
-        if (providerDoc && providerDoc.exists()) {
-          const providerSales = providerDoc.data().sales || [];
-          const saleData = {
-            saleId: salesRef.id,
+          transaction.update(productRef, {
+            availableAccounts: increment(-1),
+            stock: increment(-1),
+          });
+
+          const userBalance = Number(userDoc.data().balance) || 0;
+          const newBalance = userBalance - selectedProduct.price;
+          if (newBalance < 0) {
+            throw new Error("Saldo insuficiente");
+          }
+          const userOrders = userDoc.data().orders || [];
+          const orderData = {
             productId: selectedProduct.id,
             productName: selectedProduct.name,
             price: selectedProduct.price,
-            customerId: user.id,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            status: "active",
             customerName: purchaseModal.customerName,
-            customerPhone: purchaseModal.phoneNumber,
+            customerId: user.id,
+            phoneNumber: purchaseModal.phoneNumber,
+            createdAt: new Date().toISOString(),
             accountDetails: {
               email: accountData.email || "No proporcionado",
               password: accountData.password || "No proporcionado",
               profile: accountData.profile || "No proporcionado",
             },
+            terms: selectedProduct.terms,
+            type: "spotify",
+          };
+          transaction.update(userRef, {
+            balance: newBalance,
+            orders: [...userOrders, orderData],
+          });
+
+          const salesRef = doc(collection(db, "sales"));
+          transaction.set(salesRef, {
+            ...orderData,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
             saleDate: new Date().toISOString(),
             status: "completed",
-          };
-          transaction.update(doc(db, "users", selectedProduct.providerId), {
-            sales: [...providerSales, saleData],
+            accountDetails: {
+              email: accountData.email || "No proporcionado",
+              password: accountData.password || "No proporcionado",
+              profile: accountData.profile || "No proporcionado",
+            },
           });
-        }
 
-        return accountData;
-      });
+          if (providerDoc && providerDoc.exists()) {
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
+              saleId: salesRef.id,
+              productId: selectedProduct.id,
+              productName: selectedProduct.name,
+              price: selectedProduct.price,
+              customerId: user.id,
+              customerName: purchaseModal.customerName,
+              customerPhone: purchaseModal.phoneNumber,
+              accountDetails: {
+                email: accountData.email || "No proporcionado",
+                password: accountData.password || "No proporcionado",
+                profile: accountData.profile || "No proporcionado",
+              },
+              saleDate: new Date().toISOString(),
+              status: "completed",
+            };
+            transaction.update(doc(db, "users", selectedProduct.providerId), {
+              sales: [...providerSales, saleData],
+            });
+          }
+
+          return accountData;
+        });
+      } else {
+        // Handle "A pedido" products
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, "users", user.id);
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists()) {
+            throw new Error("Usuario no encontrado");
+          }
+
+          let providerDoc = null;
+          let providerPhone = selectedProduct.providerPhone || "";
+          if (selectedProduct.providerId && !providerPhone) {
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            providerDoc = await transaction.get(providerRef);
+            if (providerDoc.exists()) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+          }
+
+          const userBalance = Number(userDoc.data().balance) || 0;
+          const newBalance = userBalance - selectedProduct.price;
+          if (newBalance < 0) {
+            throw new Error("Saldo insuficiente");
+          }
+          const userOrders = userDoc.data().orders || [];
+          const orderData = {
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            price: selectedProduct.price,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            status: "pending",
+            customerName: purchaseModal.customerName,
+            customerId: user.id,
+            phoneNumber: purchaseModal.phoneNumber,
+            createdAt: new Date().toISOString(),
+            accountDetails: null,
+            terms: selectedProduct.terms,
+            type: "spotify",
+          };
+          transaction.update(userRef, {
+            balance: newBalance,
+            orders: [...userOrders, orderData],
+          });
+
+          const salesRef = doc(collection(db, "sales"));
+          transaction.set(salesRef, {
+            ...orderData,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            saleDate: new Date().toISOString(),
+            status: "pending",
+          });
+
+          if (providerDoc && providerDoc.exists()) {
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
+              saleId: salesRef.id,
+              productId: selectedProduct.id,
+              productName: selectedProduct.name,
+              price: selectedProduct.price,
+              customerId: user.id,
+              customerName: purchaseModal.customerName,
+              customerPhone: purchaseModal.phoneNumber,
+              accountDetails: null,
+              saleDate: new Date().toISOString(),
+              status: "pending",
+            };
+            transaction.update(doc(db, "users", selectedProduct.providerId), {
+              sales: [...providerSales, saleData],
+            });
+          }
+        });
+      }
 
       setBalance((prev) => prev - selectedProduct.price);
       setUser((prev) => ({
@@ -343,20 +479,25 @@ const Spotify = () => {
           ...prev.orders,
           {
             ...purchaseModal,
-            status: "active",
+            status: selectedProduct.status === "En stock" ? "active" : "pending",
             createdAt: new Date().toISOString(),
-            accountDetails: {
-              email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
-            },
+            accountDetails:
+              selectedProduct.status === "En stock"
+                ? {
+                    email: accountData?.email || "No proporcionado",
+                    password: accountData?.password || "No proporcionado",
+                    profile: accountData?.profile || "No proporcionado",
+                  }
+                : null,
           },
         ],
       }));
 
       setPurchaseModal(null);
       alert(
-        "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
+        selectedProduct.status === "En stock"
+          ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
+          : "¡Pedido realizado con éxito! El proveedor se contactará contigo para coordinar los detalles."
       );
     } catch (err) {
       setError(err.message || "Error al procesar la compra");
@@ -364,6 +505,24 @@ const Spotify = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const showDetails = (product) => {
+    setDetailModal({
+      name: product.name,
+      accountDetails: product.accountDetails,
+      provider: product.provider,
+      terms: product.terms,
+    });
+  };
+
+  const showTerms = (product) => {
+    setDetailModal({
+      name: product.name,
+      terms: product.terms,
+      provider: product.provider,
+    });
+    setTermsModal(true);
   };
 
   const goToDashboard = () => {
@@ -389,6 +548,13 @@ const Spotify = () => {
   );
 
   const renderProductStatus = (product) => {
+    if (product.status === "A pedido") {
+      return (
+        <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-yellow-900 text-yellow-400">
+          A pedido
+        </span>
+      );
+    }
     if (product.stock > 0) {
       return (
         <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400">
@@ -545,7 +711,7 @@ const Spotify = () => {
               >
                 <span>Netflix</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.netflix}
                 </span>
               </Link>
               <Link
@@ -554,7 +720,7 @@ const Spotify = () => {
               >
                 <span>Spotify</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {productsCount}
+                  {productsCount.spotify}
                 </span>
               </Link>
               <Link
@@ -563,7 +729,7 @@ const Spotify = () => {
               >
                 <span>Disney+</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.disney}
                 </span>
               </Link>
               <Link
@@ -572,7 +738,7 @@ const Spotify = () => {
               >
                 <span>Max</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.max}
                 </span>
               </Link>
               <Link
@@ -581,7 +747,7 @@ const Spotify = () => {
               >
                 <span>Prime Video</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.primevideo}
                 </span>
               </Link>
               <Link
@@ -590,7 +756,7 @@ const Spotify = () => {
               >
                 <span>Vix</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.vix}
                 </span>
               </Link>
               <Link
@@ -599,7 +765,7 @@ const Spotify = () => {
               >
                 <span>Crunchyroll</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.crunchyroll}
                 </span>
               </Link>
               <Link
@@ -608,7 +774,7 @@ const Spotify = () => {
               >
                 <span>Canva</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.canva}
                 </span>
               </Link>
               <Link
@@ -617,7 +783,7 @@ const Spotify = () => {
               >
                 <span>ChatGPT</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.chatgpt}
                 </span>
               </Link>
               <Link
@@ -626,7 +792,7 @@ const Spotify = () => {
               >
                 <span>Redes Sociales</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.redessociales}
                 </span>
               </Link>
             </nav>
@@ -660,7 +826,7 @@ const Spotify = () => {
                 Cuentas Premium de Spotify
               </h1>
               <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-                Disfruta de la mejor música sin interrupciones con Spotify Premium
+                Disfruta de los mejores planes de Spotify a precios increíbles
               </p>
             </div>
           </section>
@@ -747,16 +913,21 @@ const Spotify = () => {
                       <button
                         onClick={() => handlePurchase(product)}
                         disabled={
-                          (product.stock <= 0 && !product.acceptsOrders) || loading
+                          product.status === "En stock" &&
+                          product.stock <= 0
                         }
                         className={`w-full py-2 rounded-lg flex items-center justify-center transition-colors ${
-                          product.stock > 0 || product.acceptsOrders
+                          product.status === "A pedido" || product.stock > 0
                             ? "bg-cyan-600 hover:bg-cyan-700 text-white"
-                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                            : "bg-red-900 text-white cursor-not-allowed"
                         }`}
                       >
                         <FiShoppingCart className="mr-2" />
-                        {product.stock > 0 ? "Comprar" : "Pedir"}
+                        {product.status === "A pedido"
+                          ? "Pedir"
+                          : product.stock > 0
+                          ? "Comprar"
+                          : "Agotado"}
                       </button>
                     </div>
                   </div>
@@ -779,7 +950,11 @@ const Spotify = () => {
           <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Confirmar Compra</h2>
+                <h2 className="text-xl font-bold text-white">
+                  {purchaseModal.product.status === "A pedido"
+                    ? "Confirmar Pedido"
+                    : "Confirmar Compra"}
+                </h2>
                 <button
                   onClick={() => setPurchaseModal(null)}
                   className="text-gray-400 hover:text-white"
@@ -798,7 +973,7 @@ const Spotify = () => {
                   Proveedor: {purchaseModal.product.provider}
                 </p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Disponibles: {purchaseModal.product.stock}
+                  Estado: {purchaseModal.product.status}
                 </p>
               </div>
               <div className="space-y-4">
@@ -877,7 +1052,11 @@ const Spotify = () => {
                   className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-700 disabled:text-gray-400 flex items-center transition-colors"
                 >
                   {loading && <FiLoader className="animate-spin mr-2" />}
-                  <span>Confirmar Compra</span>
+                  <span>
+                    {purchaseModal.product.status === "A pedido"
+                      ? "Confirmar Pedido"
+                      : "Confirmar Compra"}
+                  </span>
                 </button>
               </div>
             </div>

@@ -39,6 +39,8 @@ const DashboardProvider = () => {
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [successModal, setSuccessModal] = useState({ open: false, message: "" });
   const [accountDetails, setAccountDetails] = useState({
     email: "",
     password: "",
@@ -50,6 +52,7 @@ const DashboardProvider = () => {
   const [withdrawAccount, setWithdrawAccount] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [balanceLoading, setBalanceLoading] = useState(true);
 
   const navigate = useNavigate();
   const auth = getAuth();
@@ -57,7 +60,7 @@ const DashboardProvider = () => {
   const formatDate = (date) => {
     if (!date) return "No especificada";
     try {
-      const d = date instanceof Date ? date : new Date(date);
+      const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
       if (isNaN(d.getTime())) return "Fecha inválida";
       return d.toLocaleDateString("es-ES", {
         day: "2-digit",
@@ -80,6 +83,9 @@ const DashboardProvider = () => {
       max: "Max",
       primevideo: "Prime Video",
       vix: "Vix",
+      chatgpt: "ChatGPT",
+      crunchyroll: "Crunchyroll",
+      redessociales: "Redes Sociales",
     };
     return categoryMap[type?.toLowerCase()] || "Otro";
   };
@@ -91,7 +97,6 @@ const DashboardProvider = () => {
       } else {
         setEmail(user.email || "");
         setUid(user.uid);
-        console.log("UID del usuario autenticado:", user.uid); // Log para depurar
         fetchUserData(user.uid);
       }
     });
@@ -147,13 +152,11 @@ const DashboardProvider = () => {
     return () => unsubscribe();
   }, [username]);
 
-  // useEffect para cargar las ventas (pedidos)
   useEffect(() => {
     if (!uid) return;
     const q = query(
       collection(db, "sales"),
       where("providerId", "==", uid)
-      // Quitamos orderBy("saleDate", "desc") temporalmente para evitar problemas si saleDate no existe
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedSales = snapshot.docs.map((doc) => {
@@ -162,20 +165,21 @@ const DashboardProvider = () => {
           id: doc.id,
           productName: data.productName || "Producto sin nombre",
           category: data.type || "netflix",
-          buyer: data.customerName || data.customerNAME || "Comprador desconocido", // Corrección para customerNAME
+          buyer: data.customerName || data.customerNAME || "Comprador desconocido",
           buyerEmail: data.customerEmail || "Sin email",
           buyerPhone: data.phoneNumber || "Sin teléfono",
-          date: data.saleDate ? new Date(data.saleDate) : data.createdAt ? new Date(data.createdAt) : new Date(), // Usar createdAt si saleDate no existe
+          date: data.saleDate ? data.saleDate : data.createdAt || new Date(),
           amount: parseFloat(data.price) || 0,
           status: data.status || "completed",
           accountDetails: data.accountDetails || { email: "No disponible", password: "No disponible", profile: "N/A" },
         };
       });
       setOrders(fetchedSales);
-      console.log("Ventas cargadas:", fetchedSales);
+      setBalanceLoading(false);
     }, (err) => {
       console.error("Error fetching sales:", err);
       setError("Error al cargar ventas");
+      setBalanceLoading(false);
     });
     return () => unsubscribe();
   }, [uid]);
@@ -194,14 +198,16 @@ const DashboardProvider = () => {
           id: doc.id,
           ...data,
           amount: parseFloat(data.amount) || 0,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
-          processedAt: data.processedAt?.toDate?.() || null,
+          createdAt: data.createdAt || new Date(),
+          processedAt: data.processedAt || null,
         };
       });
       setWithdrawals(fetchedWithdrawals);
+      setBalanceLoading(false);
     }, (err) => {
       console.error("Error fetching withdrawals:", err);
       setError("Error al cargar retiros");
+      setBalanceLoading(false);
     });
     return () => unsubscribe();
   }, [username]);
@@ -220,7 +226,7 @@ const DashboardProvider = () => {
           id: doc.id,
           ...data,
           amount: parseFloat(data.amount) || 0,
-          createdAt: data.createdAt?.toDate?.() || new Date(),
+          createdAt: data.createdAt || new Date(),
         };
       });
       setPendingWithdrawals(fetchedWithdrawals);
@@ -250,12 +256,25 @@ const DashboardProvider = () => {
     setAccountDetails((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e, isEdit = false) => {
     const file = e.target.files[0];
     if (file) {
+      const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSizeInBytes) {
+        if (isEdit) {
+          setEditError("La imagen no debe exceder los 10MB");
+        } else {
+          setError("La imagen no debe exceder los 10MB");
+        }
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProduct((prev) => ({ ...prev, image: reader.result }));
+        if (isEdit) {
+          setSelectedProduct((prev) => ({ ...prev, image: reader.result }));
+        } else {
+          setProduct((prev) => ({ ...prev, image: reader.result }));
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -278,20 +297,43 @@ const DashboardProvider = () => {
     }
   };
 
+  const handleEditStockChange = (e) => {
+    const newStock = parseInt(e.target.value) || 1;
+    const currentAccounts = selectedProduct.accounts || [];
+    let newAccounts = [...currentAccounts];
+    if (newStock > newAccounts.length) {
+      while (newAccounts.length < newStock) {
+        newAccounts.push({ email: "", password: "", profile: "" });
+      }
+    } else if (newStock < newAccounts.length) {
+      newAccounts = newAccounts.slice(0, Math.max(newStock, 1));
+    }
+    setSelectedProduct({ ...selectedProduct, stock: newStock, accounts: newAccounts });
+  };
+
   const handleAccountFieldChange = (index, field, value) => {
     const newAccounts = [...product.accounts];
     newAccounts[index] = { ...newAccounts[index], [field]: value };
     setProduct({ ...product, accounts: newAccounts });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+  const handleEditAccountFieldChange = (index, field, value) => {
+    setSelectedProduct((prev) => ({
+      ...prev,
+      accounts: prev.accounts.map((acc, i) =>
+        i === index ? { ...acc, [field]: value } : acc
+      ),
+    }));
+  };
 
-    const hasEmptyAccounts = product.accounts.some((acc) => !acc.email || !acc.password);
-    if (hasEmptyAccounts) {
-      setError("Por favor complete todos los campos de las cuentas");
-      return;
+  const handleSubmit = async () => {
+    setError("");
+    if (product.status === "En stock") {
+      const hasEmptyAccounts = product.accounts.some((acc) => !acc.email || !acc.password);
+      if (hasEmptyAccounts) {
+        setError("Por favor complete todos los campos de las cuentas");
+        return;
+      }
     }
 
     try {
@@ -299,20 +341,22 @@ const DashboardProvider = () => {
         ...product,
         provider: username,
         providerId: uid,
-        providerPhone: product.providerPhone || "",
+        providerPhone: product.status === "En stock" ? (product.providerPhone || "") : (product.providerPhone || "No especificado"),
         createdAt: serverTimestamp(),
-        availableAccounts: product.accounts.length,
+        availableAccounts: product.status === "En stock" ? product.accounts.length : 0,
       };
       const productRef = await addDoc(collection(db, "products"), productData);
 
-      const accountsCollection = collection(db, `products/${productRef.id}/accounts`);
-      for (const account of product.accounts) {
-        await addDoc(accountsCollection, {
-          email: account.email,
-          password: account.password,
-          profile: account.profile || "",
-          status: "available",
-        });
+      if (product.status === "En stock") {
+        const accountsCollection = collection(db, `products/${productRef.id}/accounts`);
+        for (const account of product.accounts) {
+          await addDoc(accountsCollection, {
+            email: account.email,
+            password: account.password,
+            profile: account.profile || "",
+            status: "available",
+          });
+        }
       }
 
       setProduct({
@@ -330,7 +374,7 @@ const DashboardProvider = () => {
       });
 
       setActiveSection("inventario");
-      alert("Producto subido exitosamente!");
+      setSuccessModal({ open: true, message: "Producto subido exitosamente!" });
     } catch (error) {
       console.error("Error al subir el producto:", error);
       setError(`Error al subir el producto: ${error.message}`);
@@ -338,40 +382,49 @@ const DashboardProvider = () => {
   };
 
   const handleEdit = (product) => {
+    setEditError("");
     setSelectedProduct({
       ...product,
-      accounts: product.accounts || Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "" }),
+      accounts: product.status === "En stock" 
+        ? (product.accounts || Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "" }))
+        : [],
       providerId: product.providerId || uid,
     });
     setEditModalOpen(true);
   };
 
   const handleUpdateProduct = async () => {
-    try {
-      if (selectedProduct) {
-        const productRef = doc(db, "products", selectedProduct.id);
-        await setDoc(productRef, {
-          ...selectedProduct,
-          providerId: selectedProduct.providerId || uid,
-        }, { merge: true });
-        setEditModalOpen(false);
-        alert("Producto actualizado exitosamente!");
+    setEditError("");
+    if (selectedProduct.status === "En stock") {
+      const hasEmptyAccounts = selectedProduct.accounts.some((acc) => !acc.email || !acc.password);
+      if (hasEmptyAccounts) {
+        setEditError("Por favor complete todos los campos de las cuentas");
+        return;
       }
+    }
+
+    try {
+      const productRef = doc(db, "products", selectedProduct.id);
+      await setDoc(productRef, {
+        ...selectedProduct,
+        providerId: selectedProduct.providerId || uid,
+        availableAccounts: selectedProduct.status === "En stock" ? (selectedProduct.accounts?.length || 0) : 0,
+      }, { merge: true });
+      setEditModalOpen(false);
+      setSuccessModal({ open: true, message: "Producto actualizado exitosamente!" });
     } catch (error) {
       console.error("Error al actualizar el producto:", error);
-      setError("Error al actualizar el producto");
+      setEditError("Error al actualizar el producto");
     }
   };
 
   const handleDelete = async (productId) => {
-    if (window.confirm("¿Estás seguro de eliminar este producto?")) {
-      try {
-        await deleteDoc(doc(db, "products", productId));
-        alert("Producto eliminado exitosamente!");
-      } catch (error) {
-        console.error("Error al eliminar el producto:", error);
-        setError("Error al eliminar el producto");
-      }
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      setSuccessModal({ open: true, message: "Producto eliminado exitosamente!" });
+    } catch (error) {
+      console.error("Error al eliminar el producto:", error);
+      setError("Error al eliminar el producto");
     }
   };
 
@@ -390,7 +443,7 @@ const DashboardProvider = () => {
           },
           { merge: true }
         );
-        alert("Configuración actualizada correctamente!");
+        setSuccessModal({ open: true, message: "Configuración actualizada correctamente!" });
       }
     } catch (error) {
       console.error("Error al actualizar la configuración:", error);
@@ -424,7 +477,7 @@ const DashboardProvider = () => {
       });
       setWithdrawAmount("");
       setWithdrawAccount("");
-      alert("Solicitud de retiro enviada correctamente");
+      setSuccessModal({ open: true, message: "Solicitud de retiro enviada correctamente" });
     } catch (error) {
       console.error("Error al solicitar retiro:", error);
       setError("Error al solicitar retiro");
@@ -439,16 +492,19 @@ const DashboardProvider = () => {
         processedAt: serverTimestamp(),
         processedBy: email,
       });
-      alert(action === "approved" ? "Retiro aprobado correctamente" : "Retiro rechazado");
+      setSuccessModal({ 
+        open: true, 
+        message: action === "approved" ? "Retiro aprobado correctamente" : "Retiro rechazado" 
+      });
     } catch (error) {
       console.error("Error al procesar retiro:", error);
       setError("Error al procesar retiro");
     }
   };
 
-  const totalEarnings = orders.reduce((total, order) => total + (order.amount || 0), 0);
-  const totalWithdrawn = withdrawals.reduce((total, withdrawal) => total + (withdrawal.status === "approved" ? withdrawal.amount : 0), 0);
-  const calculateAvailableBalance = () => totalEarnings - totalWithdrawn;
+  const totalEarnings = balanceLoading ? 0 : orders.reduce((total, order) => total + (order.amount || 0), 0);
+  const totalWithdrawn = balanceLoading ? 0 : withdrawals.reduce((total, withdrawal) => total + (withdrawal.status === "approved" ? withdrawal.amount : 0), 0);
+  const calculateAvailableBalance = () => balanceLoading ? 0 : totalEarnings - totalWithdrawn;
   const availableBalance = calculateAvailableBalance();
   const totalStock = products.reduce((total, product) => total + (parseInt(product.stock) || 0), 0);
 
@@ -497,14 +553,20 @@ const DashboardProvider = () => {
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiDollarSign className="mr-2" /> Ganancias
                 </h3>
-                <p className="text-3xl font-bold text-white">S/ {totalEarnings.toFixed(2)}</p>
-                <p className="text-gray-400">{orders.length} ventas realizadas</p>
-                <button
-                  onClick={() => setActiveSection("retiros")}
-                  className="text-cyan-400 hover:underline text-sm"
-                >
-                  Retirar fondos
-                </button>
+                {balanceLoading ? (
+                  <div className="animate-pulse text-gray-400">Cargando...</div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-white">S/ {totalEarnings.toFixed(2)}</p>
+                    <p className="text-gray-400">{orders.length} ventas realizadas</p>
+                    <button
+                      onClick={() => setActiveSection("retiros")}
+                      className="text-cyan-400 hover:underline text-sm"
+                    >
+                      Retirar fondos
+                    </button>
+                  </>
+                )}
               </div>
               <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
@@ -594,7 +656,7 @@ const DashboardProvider = () => {
                             )}
                             <div className="ml-4">
                               <div className="text-sm font-medium text-white truncate max-w-xs">{product.name}</div>
-                              <div className="text-xs text-gray-400">{product.category}</div>
+                              <div className="text-xs text-gray-400">{getCategoryDisplayName(product.category)}</div>
                             </div>
                           </div>
                         </td>
@@ -660,7 +722,7 @@ const DashboardProvider = () => {
                 </div>
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-1">
                   <label className="block text-gray-300 mb-2">Imagen del producto</label>
@@ -703,7 +765,7 @@ const DashboardProvider = () => {
                               name="file-upload"
                               type="file"
                               className="sr-only"
-                              onChange={handleFileChange}
+                              onChange={(e) => handleFileChange(e)}
                               accept="image/*"
                             />
                           </label>
@@ -741,6 +803,9 @@ const DashboardProvider = () => {
                         <option value="Max">Max</option>
                         <option value="Prime Video">Prime Video</option>
                         <option value="Vix">Vix</option>
+                        <option value="ChatGPT">ChatGPT</option>
+                        <option value="Crunchyroll">Crunchyroll</option>
+                        <option value="Redes Sociales">Redes Sociales</option>
                         <option value="Otro">Otro</option>
                       </select>
                     </div>
@@ -801,7 +866,7 @@ const DashboardProvider = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 mb-2">Teléfono de contacto</label>
+                  <label className="block text-gray-300 mb-2">Teléfono de contacto {product.status === "A pedido" ? "*" : ""}</label>
                   <input
                     type="text"
                     name="providerPhone"
@@ -809,6 +874,7 @@ const DashboardProvider = () => {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     placeholder="Ej: +51 987654321"
+                    required={product.status === "A pedido"}
                   />
                 </div>
               </div>
@@ -834,65 +900,66 @@ const DashboardProvider = () => {
                   placeholder="Especifica los términos y condiciones de uso"
                 ></textarea>
               </div>
-              <div>
-                <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
-                <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
-                <div className="space-y-4">
-                  {product.accounts.map((account, index) => (
-                    <div key={index} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
-                      <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
-                          <input
-                            type="email"
-                            value={account.email}
-                            onChange={(e) => handleAccountFieldChange(index, "email", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Contraseña*</label>
-                          <input
-                            type="text"
-                            value={account.password}
-                            onChange={(e) => handleAccountFieldChange(index, "password", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Perfil (opcional)</label>
-                          <input
-                            type="text"
-                            value={account.profile}
-                            onChange={(e) => handleAccountFieldChange(index, "profile", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                            placeholder="Ej: Perfil 1"
-                          />
+              {product.status === "En stock" && (
+                <div>
+                  <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
+                  <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
+                  <div className="space-y-4">
+                    {product.accounts.map((account, index) => (
+                      <div key={index} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
+                        <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
+                            <input
+                              type="email"
+                              value={account.email}
+                              onChange={(e) => handleAccountFieldChange(index, "email", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Contraseña*</label>
+                            <input
+                              type="text"
+                              value={account.password}
+                              onChange={(e) => handleAccountFieldChange(index, "password", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Perfil (opcional)</label>
+                            <input
+                              type="text"
+                              value={account.profile}
+                              onChange={(e) => handleAccountFieldChange(index, "profile", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              placeholder="Ej: Perfil 1"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
-                  type="button"
                   onClick={() => setActiveSection("inventario")}
                   className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="submit"
+                  onClick={handleSubmit}
                   className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
                 >
                   Subir Producto
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         );
 
@@ -1197,7 +1264,7 @@ const DashboardProvider = () => {
             <h3 className="text-xl font-bold text-white mb-6 flex items-center">
               <FiSettings className="mr-2" /> Configuración de cuenta
             </h3>
-            <form onSubmit={(e) => { e.preventDefault(); handleUpdateAccount(); }} className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-gray-300 mb-2">Nombre de usuario*</label>
                 <input
@@ -1242,12 +1309,12 @@ const DashboardProvider = () => {
                 ></textarea>
               </div>
               <button
-                type="submit"
+                onClick={handleUpdateAccount}
                 className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
               >
                 Guardar cambios
               </button>
-            </form>
+            </div>
           </div>
         );
 
@@ -1387,167 +1454,247 @@ const DashboardProvider = () => {
                   <FiX size={24} />
                 </button>
               </div>
+              {editError && (
+                <div className="bg-red-900 border-l-4 border-red-500 p-4 mb-6">
+                  <div className="flex">
+                    <FiAlertCircle className="h-5 w-5 text-red-400" />
+                    <p className="ml-3 text-sm text-red-300">{editError}</p>
+                  </div>
+                </div>
+              )}
               {selectedProduct && (
-                <form onSubmit={(e) => { e.preventDefault(); handleUpdateProduct(); }}>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-gray-300 mb-2">Imagen</label>
-                      <div className="flex items-center space-x-4">
-                        {selectedProduct.image && (
-                          <div className="relative">
-                            <img src={selectedProduct.image} alt="Product" className="w-16 h-16 object-cover rounded" />
-                            <button
-                              type="button"
-                              onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                            >
-                              <FiX size={16} />
-                            </button>
-                          </div>
-                        )}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setSelectedProduct({ ...selectedProduct, image: reader.result });
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                          className="text-sm text-gray-300"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">Nombre*</label>
-                        <input
-                          type="text"
-                          value={selectedProduct.name}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Categoría*</label>
-                        <select
-                          value={selectedProduct.category}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        >
-                          <option value="Netflix">Netflix</option>
-                          <option value="Spotify">Spotify</option>
-                          <option value="Disney">Disney+</option>
-                          <option value="Max">Max</option>
-                          <option value="Prime Video">Prime Video</option>
-                          <option value="Vix">Vix</option>
-                          <option value="Otro">Otro</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">Precio (S/)*</label>
-                        <input
-                          type="number"
-                          value={selectedProduct.price}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          step="0.01"
-                          min="0"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Stock*</label>
-                        <input
-                          type="number"
-                          value={selectedProduct.stock}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, stock: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          min="1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Estado*</label>
-                        <select
-                          value={selectedProduct.status}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        >
-                          <option value="En stock">En stock</option>
-                          <option value="A pedido">A pedido</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">Duración (días)</label>
-                        <input
-                          type="number"
-                          value={selectedProduct.duration}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          placeholder="Dejar vacío para ilimitado"
-                          min="1"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Teléfono de contacto</label>
-                        <input
-                          type="text"
-                          value={selectedProduct.providerPhone}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                          placeholder="Ej: +51 987654321"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Detalles</label>
-                      <textarea
-                        value={selectedProduct.details || ""}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
-                        rows="3"
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        placeholder="Describe los detalles y características del producto"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Términos y condiciones</label>
-                      <textarea
-                        value={selectedProduct.terms || ""}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
-                        rows="3"
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        placeholder="Especifica los términos y condiciones de uso"
-                      ></textarea>
-                    </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setEditModalOpen(false)}
-                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
-                      >
-                        Guardar Cambios
-                      </button>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-gray-300 mb-2">Imagen</label>
+                    <div className="flex items-center space-x-4">
+                      {selectedProduct.image && (
+                        <div className="relative">
+                          <img src={selectedProduct.image} alt="Product" className="w-16 h-16 object-cover rounded" />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
+                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                          >
+                            <FiX size={16} />
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, true)}
+                        className="text-sm text-gray-300"
+                      />
                     </div>
                   </div>
-                </form>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Nombre*</label>
+                      <input
+                        type="text"
+                        value={selectedProduct.name}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Categoría*</label>
+                      <select
+                        value={selectedProduct.category}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      >
+                        <option value="Netflix">Netflix</option>
+                        <option value="Spotify">Spotify</option>
+                        <option value="Disney">Disney+</option>
+                        <option value="Max">Max</option>
+                        <option value="Prime Video">Prime Video</option>
+                        <option value="Vix">Vix</option>
+                        <option value="ChatGPT">ChatGPT</option>
+                        <option value="Crunchyroll">Crunchyroll</option>
+                        <option value="Redes Sociales">Redes Sociales</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Precio (S/)*</label>
+                      <input
+                        type="number"
+                        value={selectedProduct.price}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Stock*</label>
+                      <input
+                        type="number"
+                        value={selectedProduct.stock}
+                        onChange={handleEditStockChange}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Estado*</label>
+                      <select
+                        value={selectedProduct.status}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      >
+                        <option value="En stock">En stock</option>
+                        <option value="A pedido">A pedido</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Duración (días)</label>
+                      <input
+                        type="number"
+                        value={selectedProduct.duration}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        placeholder="Dejar vacío para ilimitado"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Teléfono de contacto {selectedProduct.status === "A pedido" ? "*" : ""}</label>
+                      <input
+                        type="text"
+                        value={selectedProduct.providerPhone}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        placeholder="Ej: +51 987654321"
+                        required={selectedProduct.status === "A pedido"}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-2">Detalles del producto</label>
+                    <textarea
+                      value={selectedProduct.details}
+                      onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      placeholder="Describe los detalles y características del producto"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-2">Términos y condiciones</label>
+                    <textarea
+                      value={selectedProduct.terms}
+                      onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      placeholder="Especifica los términos y condiciones de uso"
+                    ></textarea>
+                  </div>
+                  {selectedProduct.status === "En stock" && (
+                    <div>
+                      <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
+                      <p className="text-xs text-gray-400 mb-3">
+                        Debe completar todas las cuentas según el stock indicado
+                      </p>
+                      <div className="space-y-4">
+                        {selectedProduct.accounts.map((account, index) => (
+                          <div
+                            key={index}
+                            className="border border-gray-600 rounded-lg p-4 bg-gray-700"
+                          >
+                            <h4 className="text-sm font-medium text-white mb-3">
+                              Cuenta {index + 1}
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">
+                                  Correo electrónico*
+                                </label>
+                                <input
+                                  type="email"
+                                  value={account.email}
+                                  onChange={(e) =>
+                                    handleEditAccountFieldChange(index, "email", e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">
+                                  Contraseña*
+                                </label>
+                                <input
+                                  type="text"
+                                  value={account.password}
+                                  onChange={(e) =>
+                                    handleEditAccountFieldChange(index, "password", e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">
+                                  Perfil (opcional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={account.profile}
+                                  onChange={(e) =>
+                                    handleEditAccountFieldChange(index, "profile", e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                                  placeholder="Ej: Perfil 1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={() => setEditModalOpen(false)}
+                      className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleUpdateProduct}
+                      className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
+                    >
+                      Guardar Cambios
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {successModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-sm w-full">
+            <FiCheck className="mx-auto text-4xl text-green-500 mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Éxito</h3>
+            <p className="text-gray-300 mb-4">{successModal.message}</p>
+            <button
+              onClick={() => setSuccessModal({ open: false, message: "" })}
+              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+            >
+              Aceptar
+            </button>
           </div>
         </div>
       )}

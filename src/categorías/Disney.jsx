@@ -32,6 +32,7 @@ import logo from "../images/logo.png";
 const Disney = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [user, setUser] = useState(null);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,18 @@ const Disney = () => {
   const [detailModal, setDetailModal] = useState(null);
   const [termsModal, setTermsModal] = useState(false);
   const [generalTermsModal, setGeneralTermsModal] = useState(false);
-  const [productsCount, setProductsCount] = useState(0);
+  const [productsCount, setProductsCount] = useState({
+    netflix: 0,
+    spotify: 0,
+    disney: 0,
+    max: 0,
+    primevideo: 0,
+    vix: 0,
+    crunchyroll: 0,
+    canva: 0,
+    chatgpt: 0,
+    redessociales: 0,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -70,7 +82,7 @@ const Disney = () => {
           }
         } catch (err) {
           setError("Error al cargar datos del usuario");
-          console.error("Error al cargar datos del usuario:", err);
+          console.error(err);
         }
       } else {
         setUser(null);
@@ -83,6 +95,7 @@ const Disney = () => {
   }, []);
 
   useEffect(() => {
+    // Fetch Disney products
     const productsQuery = query(
       collection(db, "products"),
       where("category", "==", "Disney")
@@ -90,70 +103,127 @@ const Disney = () => {
     const productsUnsubscribe = onSnapshot(
       productsQuery,
       async (snapshot) => {
-        try {
-          const productsData = snapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              price: Number(data.price) || 0,
-              stock: Number(data.availableAccounts) || 0,
-              accountDetails: data.details || "Detalles no disponibles",
-              terms: data.terms || "Términos del proveedor",
-              provider: data.provider || "Proveedor no especificado",
-              providerId: data.providerId || "",
-              providerPhone: data.providerPhone || "",
-              acceptsOrders: data.acceptsOrders !== false,
-              duration: data.duration || "1 mes",
-              type: data.type || "Premium",
-            };
-          });
+        const productsData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            price: Number(data.price) || 0,
+            stock: Number(data.availableAccounts) || 0,
+            accountDetails: data.details || "Detalles no disponibles",
+            terms: data.terms || "Términos del proveedor",
+            provider: data.provider || "Proveedor no especificado",
+            providerId: data.providerId || "",
+            providerPhone: data.providerPhone || "",
+            acceptsOrders: data.status === "A pedido",
+            duration: data.duration || "1 mes",
+            type: data.type || "Premium",
+            status: data.status || "En stock",
+          };
+        });
 
-          const productsWithProviders = await Promise.all(
-            productsData.map(async (product) => {
-              if (
-                !product.provider ||
-                product.provider === "Proveedor no especificado"
-              ) {
-                try {
-                  if (product.providerId) {
-                    const providerDoc = await getDoc(
-                      doc(db, "users", product.providerId)
-                    );
-                    if (providerDoc.exists()) {
-                      return {
-                        ...product,
-                        provider:
-                          providerDoc.data().username ||
-                          providerDoc.data().email ||
-                          product.provider,
-                        providerPhone:
-                          providerDoc.data().phoneNumber || product.providerPhone,
-                      };
-                    }
+        const productsWithProviders = await Promise.all(
+          productsData.map(async (product) => {
+            if (
+              !product.provider ||
+              product.provider === "Proveedor no especificado"
+            ) {
+              try {
+                if (product.providerId) {
+                  const providerDoc = await getDoc(
+                    doc(db, "users", product.providerId)
+                  );
+                  if (providerDoc.exists()) {
+                    return {
+                      ...product,
+                      provider:
+                        providerDoc.data().username ||
+                        providerDoc.data().email ||
+                        product.provider,
+                      providerPhone:
+                        providerDoc.data().phoneNumber || product.providerPhone,
+                    };
                   }
-                } catch (err) {
-                  console.error("Error al cargar datos del proveedor:", err);
                 }
+              } catch (err) {
+                console.error("Error al cargar datos del proveedor:", err);
               }
-              return product;
-            })
-          );
+            }
+            return product;
+          })
+        );
 
-          setProducts(productsWithProviders);
-          setProductsCount(productsWithProviders.length);
-        } catch (err) {
-          setError("Error al cargar productos");
-          console.error("Error al cargar productos:", err);
-        }
+        setProducts(productsWithProviders);
+        setProductsCount((prev) => ({
+          ...prev,
+          disney: productsWithProviders.length,
+        }));
       },
       (err) => {
-        setError("Error al cargar productos");
-        console.error("Error en onSnapshot:", err);
+        setError("Error al cargar productos de Disney");
+        console.error(err);
       }
     );
 
-    return () => productsUnsubscribe();
+    // Fetch accounts for Disney products
+    const accountsQuery = query(
+      collection(db, "disney_accounts"),
+      where("status", "==", "available")
+    );
+    const accountsUnsubscribe = onSnapshot(
+      accountsQuery,
+      (snapshot) => {
+        const accountsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          productId: doc.data().productId || "",
+          providerId: doc.data().providerId || "",
+        }));
+        setAccounts(accountsData);
+      },
+      (err) => {
+        console.error("Error al cargar cuentas:", err);
+      }
+    );
+
+    // Fetch product counts for other categories
+    const categories = [
+      "Netflix",
+      "Spotify",
+      "Max",
+      "Prime Video",
+      "Vix",
+      "Crunchyroll",
+      "Canva",
+      "ChatGPT",
+      "Redes Sociales",
+    ];
+
+    const unsubscribes = categories.map((category) => {
+      const categoryKey = category.toLowerCase().replace(/\s+/g, "");
+      const q = query(
+        collection(db, "products"),
+        where("category", "==", category)
+      );
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          setProductsCount((prev) => ({
+            ...prev,
+            [categoryKey]: snapshot.docs.length,
+          }));
+        },
+        (err) => {
+          console.error(`Error al cargar productos de ${category}:`, err);
+        }
+      );
+    });
+
+    return () => {
+      productsUnsubscribe();
+      accountsUnsubscribe();
+      unsubscribes.forEach((unsub) => unsub());
+    };
   }, []);
 
   const handlePurchase = (product) => {
@@ -169,9 +239,7 @@ const Disney = () => {
     }
 
     if (!product.providerId || product.providerId === "") {
-      alert(
-        "Este producto no tiene un proveedor asociado. Contacta al administrador."
-      );
+      alert("Este producto no tiene un proveedor asociado. Contacta al administrador.");
       return;
     }
 
@@ -180,6 +248,263 @@ const Disney = () => {
       customerName: user.name,
       phoneNumber: "",
     });
+  };
+
+  const finalizePurchase = async () => {
+    if (!document.getElementById("termsCheck").checked) {
+      setError("Debes aceptar los términos y condiciones");
+      return;
+    }
+    if (!/^\d{9}$/.test(purchaseModal.phoneNumber)) {
+      setError("El número de WhatsApp debe tener 9 dígitos");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const selectedProduct = purchaseModal.product;
+
+      if (!selectedProduct.providerId || selectedProduct.providerId === "") {
+        throw new Error("El producto no tiene un proveedor asociado");
+      }
+
+      let accountData = null;
+      if (selectedProduct.status === "En stock") {
+        // Handle "En stock" products
+        accountData = await runTransaction(db, async (transaction) => {
+          const productRef = doc(db, "products", selectedProduct.id);
+          const productDoc = await transaction.get(productRef);
+          if (!productDoc.exists()) {
+            throw new Error("Producto no encontrado");
+          }
+          const productData = productDoc.data();
+          if (productData.availableAccounts <= 0) {
+            throw new Error("No hay cuentas disponibles para este producto");
+          }
+
+          const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
+          const availableAccountsQuery = query(
+            accountsRef,
+            where("status", "==", "available"),
+            limit(1)
+          );
+          const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
+          if (availableAccountsSnapshot.empty) {
+            throw new Error("No hay cuentas disponibles en la subcolección");
+          }
+          const accountDoc = availableAccountsSnapshot.docs[0];
+          const accountRef = accountDoc.ref;
+          const accountData = accountDoc.data();
+
+          const userRef = doc(db, "users", user.id);
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists()) {
+            throw new Error("Usuario no encontrado");
+          }
+
+          let providerDoc = null;
+          let providerPhone = selectedProduct.providerPhone || "";
+          if (selectedProduct.providerId && !providerPhone) {
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            providerDoc = await transaction.get(providerRef);
+            if (providerDoc.exists()) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+          }
+
+          transaction.update(accountRef, {
+            status: "unavailable",
+            assignedTo: user.id,
+            assignedAt: new Date().toISOString(),
+          });
+
+          transaction.update(productRef, {
+            availableAccounts: increment(-1),
+            stock: increment(-1),
+          });
+
+          const userBalance = Number(userDoc.data().balance) || 0;
+          const newBalance = userBalance - selectedProduct.price;
+          if (newBalance < 0) {
+            throw new Error("Saldo insuficiente");
+          }
+          const userOrders = userDoc.data().orders || [];
+          const orderData = {
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            price: selectedProduct.price,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            status: "active",
+            customerName: purchaseModal.customerName,
+            customerId: user.id,
+            phoneNumber: purchaseModal.phoneNumber,
+            createdAt: new Date().toISOString(),
+            accountDetails: {
+              email: accountData.email || "No proporcionado",
+              password: accountData.password || "No proporcionado",
+              profile: accountData.profile || "No proporcionado",
+            },
+            terms: selectedProduct.terms,
+            type: "disney",
+          };
+          transaction.update(userRef, {
+            balance: newBalance,
+            orders: [...userOrders, orderData],
+          });
+
+          const salesRef = doc(collection(db, "sales"));
+          transaction.set(salesRef, {
+            ...orderData,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            saleDate: new Date().toISOString(),
+            status: "completed",
+            accountDetails: {
+              email: accountData.email || "No proporcionado",
+              password: accountData.password || "No proporcionado",
+              profile: accountData.profile || "No proporcionado",
+            },
+          });
+
+          if (providerDoc && providerDoc.exists()) {
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
+              saleId: salesRef.id,
+              productId: selectedProduct.id,
+              productName: selectedProduct.name,
+              price: selectedProduct.price,
+              customerId: user.id,
+              customerName: purchaseModal.customerName,
+              customerPhone: purchaseModal.phoneNumber,
+              accountDetails: {
+                email: accountData.email || "No proporcionado",
+                password: accountData.password || "No proporcionado",
+                profile: accountData.profile || "No proporcionado",
+              },
+              saleDate: new Date().toISOString(),
+              status: "completed",
+            };
+            transaction.update(doc(db, "users", selectedProduct.providerId), {
+              sales: [...providerSales, saleData],
+            });
+          }
+
+          return accountData;
+        });
+      } else {
+        // Handle "A pedido" products
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, "users", user.id);
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists()) {
+            throw new Error("Usuario no encontrado");
+          }
+
+          let providerDoc = null;
+          let providerPhone = selectedProduct.providerPhone || "";
+          if (selectedProduct.providerId && !providerPhone) {
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            providerDoc = await transaction.get(providerRef);
+            if (providerDoc.exists()) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+          }
+
+          const userBalance = Number(userDoc.data().balance) || 0;
+          const newBalance = userBalance - selectedProduct.price;
+          if (newBalance < 0) {
+            throw new Error("Saldo insuficiente");
+          }
+          const userOrders = userDoc.data().orders || [];
+          const orderData = {
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            price: selectedProduct.price,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            status: "pending",
+            customerName: purchaseModal.customerName,
+            customerId: user.id,
+            phoneNumber: purchaseModal.phoneNumber,
+            createdAt: new Date().toISOString(),
+            accountDetails: null,
+            terms: selectedProduct.terms,
+            type: "disney",
+          };
+          transaction.update(userRef, {
+            balance: newBalance,
+            orders: [...userOrders, orderData],
+          });
+
+          const salesRef = doc(collection(db, "sales"));
+          transaction.set(salesRef, {
+            ...orderData,
+            provider: selectedProduct.provider,
+            providerId: selectedProduct.providerId,
+            providerPhone: providerPhone,
+            saleDate: new Date().toISOString(),
+            status: "pending",
+          });
+
+          if (providerDoc && providerDoc.exists()) {
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
+              saleId: salesRef.id,
+              productId: selectedProduct.id,
+              productName: selectedProduct.name,
+              price: selectedProduct.price,
+              customerId: user.id,
+              customerName: purchaseModal.customerName,
+              customerPhone: purchaseModal.phoneNumber,
+              accountDetails: null,
+              saleDate: new Date().toISOString(),
+              status: "pending",
+            };
+            transaction.update(doc(db, "users", selectedProduct.providerId), {
+              sales: [...providerSales, saleData],
+            });
+          }
+        });
+      }
+
+      setBalance((prev) => prev - selectedProduct.price);
+      setUser((prev) => ({
+        ...prev,
+        orders: [
+          ...prev.orders,
+          {
+            ...purchaseModal,
+            status: selectedProduct.status === "En stock" ? "active" : "pending",
+            createdAt: new Date().toISOString(),
+            accountDetails:
+              selectedProduct.status === "En stock"
+                ? {
+                    email: accountData?.email || "No proporcionado",
+                    password: accountData?.password || "No proporcionado",
+                    profile: accountData?.profile || "No proporcionado",
+                  }
+                : null,
+          },
+        ],
+      }));
+
+      setPurchaseModal(null);
+      alert(
+        selectedProduct.status === "En stock"
+          ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
+          : "¡Pedido realizado con éxito! El proveedor se contactará contigo para coordinar los detalles."
+      );
+    } catch (err) {
+      setError(err.message || "Error al procesar la compra");
+      console.error("Error en la compra:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const showDetails = (product) => {
@@ -198,183 +523,6 @@ const Disney = () => {
       provider: product.provider,
     });
     setTermsModal(true);
-  };
-
-  const finalizePurchase = async () => {
-    const termsCheck = document.getElementById("termsCheck");
-    if (!termsCheck?.checked) {
-      setError("Debes aceptar los términos y condiciones");
-      return;
-    }
-    if (!/^\d{9}$/.test(purchaseModal.phoneNumber)) {
-      setError("El número de WhatsApp debe tener 9 dígitos");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const selectedProduct = purchaseModal.product;
-
-      if (!selectedProduct.providerId || selectedProduct.providerId === "") {
-        throw new Error("El producto no tiene un proveedor asociado");
-      }
-
-      const accountData = await runTransaction(db, async (transaction) => {
-        const productRef = doc(db, "products", selectedProduct.id);
-        const productDoc = await transaction.get(productRef);
-        if (!productDoc.exists()) {
-          throw new Error("Producto no encontrado");
-        }
-        const productData = productDoc.data();
-        if (productData.availableAccounts <= 0) {
-          throw new Error("No hay cuentas disponibles para este producto");
-        }
-
-        const accountsRef = collection(
-          db,
-          `products/${selectedProduct.id}/accounts`
-        );
-        const availableAccountsQuery = query(
-          accountsRef,
-          where("status", "==", "available"),
-          limit(1)
-        );
-        const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
-        if (availableAccountsSnapshot.empty) {
-          throw new Error("No hay cuentas disponibles en la subcolección");
-        }
-        const accountDoc = availableAccountsSnapshot.docs[0];
-        const accountRef = accountDoc.ref;
-        const accountData = accountDoc.data();
-
-        const userRef = doc(db, "users", user.id);
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          throw new Error("Usuario no encontrado");
-        }
-
-        let providerDoc = null;
-        let providerPhone = selectedProduct.providerPhone || "";
-        if (selectedProduct.providerId && !providerPhone) {
-          const providerRef = doc(db, "users", selectedProduct.providerId);
-          providerDoc = await transaction.get(providerRef);
-          if (providerDoc.exists()) {
-            providerPhone = providerDoc.data().phoneNumber || "";
-          }
-        }
-
-        transaction.update(accountRef, {
-          status: "unavailable",
-          assignedTo: user.id,
-          assignedAt: new Date().toISOString(),
-        });
-
-        transaction.update(productRef, {
-          availableAccounts: increment(-1),
-          stock: increment(-1),
-        });
-
-        const userBalance = Number(userDoc.data().balance) || 0;
-        const newBalance = userBalance - selectedProduct.price;
-        if (newBalance < 0) {
-          throw new Error("Saldo insuficiente");
-        }
-        const userOrders = userDoc.data().orders || [];
-        const orderData = {
-          productId: selectedProduct.id,
-          productName: selectedProduct.name,
-          price: selectedProduct.price,
-          provider: selectedProduct.provider,
-          providerId: selectedProduct.providerId,
-          providerPhone: providerPhone,
-          status: "active",
-          customerName: purchaseModal.customerName,
-          customerId: user.id,
-          phoneNumber: purchaseModal.phoneNumber,
-          createdAt: new Date().toISOString(),
-          accountDetails: {
-            email: accountData.email || "No proporcionado",
-            password: accountData.password || "No proporcionado",
-            profile: accountData.profile || "No proporcionado",
-          },
-          terms: selectedProduct.terms,
-          type: "disney",
-        };
-        transaction.update(userRef, {
-          balance: newBalance,
-          orders: [...userOrders, orderData],
-        });
-
-        const salesRef = doc(collection(db, "sales"));
-        transaction.set(salesRef, {
-          ...orderData,
-          provider: selectedProduct.provider,
-          providerId: selectedProduct.providerId,
-          providerPhone: providerPhone,
-          saleDate: new Date().toISOString(),
-          status: "completed",
-          accountDetails: {
-            email: accountData.email || "No proporcionado",
-            password: accountData.password || "No proporcionado",
-            profile: accountData.profile || "No proporcionado",
-          },
-        });
-
-        if (providerDoc && providerDoc.exists()) {
-          const providerSales = providerDoc.data().sales || [];
-          const saleData = {
-            saleId: salesRef.id,
-            productId: selectedProduct.id,
-            productName: selectedProduct.name,
-            price: selectedProduct.price,
-            customerId: user.id,
-            customerName: purchaseModal.customerName,
-            customerPhone: purchaseModal.phoneNumber,
-            accountDetails: {
-              email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
-            },
-            saleDate: new Date().toISOString(),
-            status: "completed",
-          };
-          transaction.update(doc(db, "users", selectedProduct.providerId), {
-            sales: [...providerSales, saleData],
-          });
-        }
-
-        return accountData;
-      });
-
-      setBalance((prev) => prev - selectedProduct.price);
-      setUser((prev) => ({
-        ...prev,
-        orders: [
-          ...prev.orders,
-          {
-            ...purchaseModal,
-            status: "active",
-            createdAt: new Date().toISOString(),
-            accountDetails: {
-              email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
-            },
-          },
-        ],
-      }));
-
-      setPurchaseModal(null);
-      alert(
-        "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
-      );
-    } catch (err) {
-      setError(err.message || "Error al procesar la compra");
-      console.error("Error en la compra:", err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const goToDashboard = () => {
@@ -400,6 +548,13 @@ const Disney = () => {
   );
 
   const renderProductStatus = (product) => {
+    if (product.status === "A pedido") {
+      return (
+        <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-yellow-900 text-yellow-400">
+          A pedido
+        </span>
+      );
+    }
     if (product.stock > 0) {
       return (
         <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400">
@@ -556,7 +711,7 @@ const Disney = () => {
               >
                 <span>Netflix</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.netflix}
                 </span>
               </Link>
               <Link
@@ -565,7 +720,7 @@ const Disney = () => {
               >
                 <span>Spotify</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.spotify}
                 </span>
               </Link>
               <Link
@@ -574,7 +729,7 @@ const Disney = () => {
               >
                 <span>Disney+</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {productsCount}
+                  {productsCount.disney}
                 </span>
               </Link>
               <Link
@@ -583,7 +738,7 @@ const Disney = () => {
               >
                 <span>Max</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.max}
                 </span>
               </Link>
               <Link
@@ -592,7 +747,7 @@ const Disney = () => {
               >
                 <span>Prime Video</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.primevideo}
                 </span>
               </Link>
               <Link
@@ -601,7 +756,7 @@ const Disney = () => {
               >
                 <span>Vix</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.vix}
                 </span>
               </Link>
               <Link
@@ -610,7 +765,7 @@ const Disney = () => {
               >
                 <span>Crunchyroll</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.crunchyroll}
                 </span>
               </Link>
               <Link
@@ -619,7 +774,7 @@ const Disney = () => {
               >
                 <span>Canva</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.canva}
                 </span>
               </Link>
               <Link
@@ -628,7 +783,7 @@ const Disney = () => {
               >
                 <span>ChatGPT</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.chatgpt}
                 </span>
               </Link>
               <Link
@@ -637,7 +792,7 @@ const Disney = () => {
               >
                 <span>Redes Sociales</span>
                 <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {productsCount.redessociales}
                 </span>
               </Link>
             </nav>
@@ -671,16 +826,14 @@ const Disney = () => {
                 Cuentas Premium de Disney+
               </h1>
               <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-                Disfruta de películas, series y contenido exclusivo con Disney+
+                Disfruta de los mejores planes de Disney+ a precios increíbles
               </p>
             </div>
           </section>
 
           <section className="container mx-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">
-                Planes Disponibles
-              </h2>
+              <h2 className="text-2xl font-bold text-white">Planes Disponibles</h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
                 className="text-sm text-cyan-400 hover:underline"
@@ -760,17 +913,21 @@ const Disney = () => {
                       <button
                         onClick={() => handlePurchase(product)}
                         disabled={
-                          (product.stock <= 0 && !product.acceptsOrders) ||
-                          loading
+                          product.status === "En stock" &&
+                          product.stock <= 0
                         }
                         className={`w-full py-2 rounded-lg flex items-center justify-center transition-colors ${
-                          product.stock > 0 || product.acceptsOrders
+                          product.status === "A pedido" || product.stock > 0
                             ? "bg-cyan-600 hover:bg-cyan-700 text-white"
-                            : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                            : "bg-red-900 text-white cursor-not-allowed"
                         }`}
                       >
                         <FiShoppingCart className="mr-2" />
-                        {product.stock > 0 ? "Comprar" : "Pedir"}
+                        {product.status === "A pedido"
+                          ? "Pedir"
+                          : product.stock > 0
+                          ? "Comprar"
+                          : "Agotado"}
                       </button>
                     </div>
                   </div>
@@ -793,7 +950,11 @@ const Disney = () => {
           <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Confirmar Compra</h2>
+                <h2 className="text-xl font-bold text-white">
+                  {purchaseModal.product.status === "A pedido"
+                    ? "Confirmar Pedido"
+                    : "Confirmar Compra"}
+                </h2>
                 <button
                   onClick={() => setPurchaseModal(null)}
                   className="text-gray-400 hover:text-white"
@@ -812,7 +973,7 @@ const Disney = () => {
                   Proveedor: {purchaseModal.product.provider}
                 </p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Disponibles: {purchaseModal.product.stock}
+                  Estado: {purchaseModal.product.status}
                 </p>
               </div>
               <div className="space-y-4">
@@ -891,7 +1052,11 @@ const Disney = () => {
                   className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-700 disabled:text-gray-400 flex items-center transition-colors"
                 >
                   {loading && <FiLoader className="animate-spin mr-2" />}
-                  <span>Confirmar Compra</span>
+                  <span>
+                    {purchaseModal.product.status === "A pedido"
+                      ? "Confirmar Pedido"
+                      : "Confirmar Compra"}
+                  </span>
                 </button>
               </div>
             </div>

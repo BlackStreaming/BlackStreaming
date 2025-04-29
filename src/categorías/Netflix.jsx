@@ -11,6 +11,15 @@ import {
   FiUser,
   FiX,
   FiLogOut,
+  FiFilm,
+  FiMusic,
+  FiTv,
+  FiVideo,
+  FiPlayCircle,
+  FiBook,
+  FiPenTool,
+  FiMessageSquare,
+  FiGlobe,
 } from "react-icons/fi";
 import {
   collection,
@@ -95,7 +104,6 @@ const Netflix = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch Netflix products
     const productsQuery = query(
       collection(db, "products"),
       where("category", "==", "Netflix")
@@ -118,7 +126,7 @@ const Netflix = () => {
             acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
             type: data.type || "Premium",
-            status: data.status || "En stock", // Ensure status is included
+            status: data.status || "En stock",
           };
         });
 
@@ -165,7 +173,6 @@ const Netflix = () => {
       }
     );
 
-    // Fetch accounts for Netflix products
     const accountsQuery = query(
       collection(db, "netflix_accounts"),
       where("status", "==", "available")
@@ -186,7 +193,6 @@ const Netflix = () => {
       }
     );
 
-    // Fetch product counts for other categories
     const categories = [
       "Spotify",
       "Disney",
@@ -271,7 +277,6 @@ const Netflix = () => {
 
       let accountData = null;
       if (selectedProduct.status === "En stock") {
-        // Handle "En stock" products
         accountData = await runTransaction(db, async (transaction) => {
           const productRef = doc(db, "products", selectedProduct.id);
           const productDoc = await transaction.get(productRef);
@@ -396,7 +401,6 @@ const Netflix = () => {
           return accountData;
         });
       } else {
-        // Handle "A pedido" products
         await runTransaction(db, async (transaction) => {
           const userRef = doc(db, "users", user.id);
           const userDoc = await transaction.get(userRef);
@@ -427,12 +431,12 @@ const Netflix = () => {
             provider: selectedProduct.provider,
             providerId: selectedProduct.providerId,
             providerPhone: providerPhone,
-            status: "pending", // A pedido orders start as pending
+            status: "pending",
             customerName: purchaseModal.customerName,
             customerId: user.id,
             phoneNumber: purchaseModal.phoneNumber,
             createdAt: new Date().toISOString(),
-            accountDetails: null, // No account details yet for "A pedido"
+            accountDetails: null,
             terms: selectedProduct.terms,
             type: "netflix",
           };
@@ -448,7 +452,7 @@ const Netflix = () => {
             providerId: selectedProduct.providerId,
             providerPhone: providerPhone,
             saleDate: new Date().toISOString(),
-            status: "pending", // A pedido sales are pending until fulfilled
+            status: "pending",
           });
 
           if (providerDoc && providerDoc.exists()) {
@@ -550,20 +554,20 @@ const Netflix = () => {
   const renderProductStatus = (product) => {
     if (product.status === "A pedido") {
       return (
-        <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-yellow-900 text-yellow-400">
+        <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/50">
           A pedido
         </span>
       );
     }
     if (product.stock > 0) {
       return (
-        <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-green-900 text-green-400">
+        <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/50">
           Disponibles: {product.stock}
         </span>
       );
     }
     return (
-      <span className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold bg-red-900 text-red-400">
+      <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/50">
         Agotado
       </span>
     );
@@ -571,22 +575,22 @@ const Netflix = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-gray-200">
-        <FiLoader className="animate-spin text-4xl text-cyan-500 mb-4" />
-        <p className="text-gray-400">Cargando...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
+        <FiLoader className="animate-spin text-5xl text-cyan-400 mb-4" />
+        <p className="text-lg font-medium text-gray-300">Cargando...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
-        <FiAlertCircle className="text-4xl text-red-500 mb-4" />
-        <p className="text-lg text-white mb-2">Error</p>
-        <p className="text-gray-400 mb-6 text-center">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 p-4">
+        <FiAlertCircle className="text-5xl text-red-400 mb-4" />
+        <p className="text-xl font-semibold text-white mb-2">Error</p>
+        <p className="text-gray-300 mb-6 text-center max-w-md">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+          className="px-6 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-all shadow-lg"
         >
           Recargar
         </button>
@@ -595,79 +599,80 @@ const Netflix = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col">
-      <header className="sticky top-0 z-50 bg-gray-800 border-b border-gray-700">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 flex flex-col">
+      <header className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800/50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between flex-wrap">
+          <div className="flex items-center space-x-3">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="text-gray-300 hover:bg-gray-700 p-2 rounded-lg transition-colors md:hidden"
+              className="text-gray-200 hover:bg-gray-700/50 p-2 rounded-full transition-all md:hidden"
             >
-              <FiMenu size={20} />
+              <FiMenu size={24} />
             </button>
             <Link to="/" className="flex items-center space-x-2">
-              <img src={logo} alt="BlackStreaming" className="h-8 w-auto" />
-              <span className="text-xl font-bold text-cyan-400">
+              <img src={logo} alt="BlackStreaming" className="h-10 w-auto" />
+              <span className="text-xl font-semibold text-cyan-400 hidden sm:block">
                 BlackStreaming
               </span>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center relative w-1/3">
+          <div className="flex items-center relative w-full sm:w-auto sm:max-w-xs md:max-w-md mt-3 sm:mt-0 order-3 sm:order-2 sm:mx-3">
             <input
               type="text"
               placeholder="Buscar en Netflix..."
-              className="w-full px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               onClick={handleSearch}
-              className="absolute right-3 text-gray-400 hover:text-white transition-colors"
+              className="absolute right-3 text-gray-400 hover:text-cyan-400 transition-all"
             >
-              <FiSearch />
+              <FiSearch size={20} />
             </button>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 order-2 sm:order-3">
             {user ? (
-              <div className="hidden md:flex items-center space-x-4">
-                <span className="text-sm font-medium text-gray-300 flex items-center">
+              <div className="flex items-center space-x-2 md:space-x-4">
+                <span className="text-sm font-medium text-gray-300 hidden sm:flex items-center">
                   <FiUser className="mr-2 text-cyan-400" /> {user.name}
                 </span>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-300">
+                  <span className="text-sm font-medium text-gray-200 bg-gray-800/50 px-3 py-1 rounded-full">
                     S/ {balance.toFixed(2)}
                   </span>
                   <button
                     onClick={goToDashboard}
-                    className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
+                    className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 transition-all"
                     title="Dashboard"
                   >
-                    <FiUser className="text-white" />
+                    <FiUser className="text-cyan-400" size={20} />
                   </button>
                   <button
                     onClick={() => {
                       auth.signOut();
                       navigate("/");
                     }}
-                    className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-red-900 hover:bg-red-800 transition-colors text-sm text-white"
+                    className="flex items-center space-x-1 px-3 py-2 rounded-full bg-red-600/80 hover:bg-red-700 transition-all text-sm text-white"
                   >
-                    <FiLogOut /> <span>Salir</span>
+                    <FiLogOut size={18} />
+                    <span className="hidden sm:inline">Salir</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="hidden md:flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-gray-200 hover:text-cyan-400 transition-all"
                 >
                   Ingresar
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-600 text-white hover:bg-cyan-700 transition-colors text-sm"
+                  className="px-4 py-2 rounded-full bg-cyan-500 text-white hover:bg-cyan-600 transition-all text-sm"
                 >
                   Registrarse
                 </button>
@@ -675,136 +680,157 @@ const Netflix = () => {
             )}
           </div>
         </div>
-
-        {menuOpen && (
-          <div className="md:hidden px-4 pb-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar en Netflix..."
-                className="w-full px-4 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button
-                onClick={handleSearch}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-white transition-colors"
-              >
-                <FiSearch />
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 relative">
         <aside
-          className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-white shadow-lg transform ${
+          className={`fixed inset-y-0 left-0 w-56 sm:w-64 bg-gray-900/90 backdrop-blur-sm text-white shadow-2xl transform ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-300 ease-in-out z-40 md:translate-x-0 md:static border-r border-gray-700`}
+          } transition-transform duration-300 ease-in-out z-50 md:static md:z-40 md:translate-x-0 border-r border-gray-800/50`}
         >
           <div className="flex flex-col h-full">
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            <div className="flex justify-between items-center p-4 md:hidden">
+              <span className="text-xl font-semibold text-cyan-400">
+                BlackStreaming
+              </span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="text-gray-200 hover:bg-gray-700/50 p-2 rounded-full transition-all"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-4 space-y-2">
               <Link
                 to="/netflix"
-                className="flex items-center justify-between px-4 py-3 rounded-lg bg-cyan-900 text-white"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
               >
-                <span>Netflix</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiFilm className="text-cyan-400" />
+                  <span>Netflix</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.netflix}
                 </span>
               </Link>
               <Link
                 to="/spotify"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Spotify</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiMusic className="text-green-400" />
+                  <span>Spotify</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.spotify}
                 </span>
               </Link>
               <Link
                 to="/disney"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Disney+</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-blue-400" />
+                  <span>Disney+</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.disney}
                 </span>
               </Link>
               <Link
                 to="/max"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Max</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiVideo className="text-purple-400" />
+                  <span>Max</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.max}
                 </span>
               </Link>
               <Link
                 to="/primevideo"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Prime Video</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiPlayCircle className="text-blue-500" />
+                  <span>Prime Video</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.primevideo}
                 </span>
               </Link>
               <Link
                 to="/vix"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Vix</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-red-400" />
+                  <span>Vix</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.vix}
                 </span>
               </Link>
               <Link
                 to="/crunchyroll"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Crunchyroll</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiBook className="text-orange-400" />
+                  <span>Crunchyroll</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.crunchyroll}
                 </span>
               </Link>
               <Link
                 to="/canva"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Canva</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiPenTool className="text-teal-400" />
+                  <span>Canva</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.canva}
                 </span>
               </Link>
               <Link
                 to="/chatgpt"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>ChatGPT</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiMessageSquare className="text-gray-400" />
+                  <span>ChatGPT</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.chatgpt}
                 </span>
               </Link>
               <Link
                 to="/redessociales"
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <span>Redes Sociales</span>
-                <span className="bg-gray-700 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <FiGlobe className="text-pink-400" />
+                  <span>Redes Sociales</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {productsCount.redessociales}
                 </span>
               </Link>
             </nav>
             {user && (
-              <div className="p-4 border-t border-gray-700">
-                <div className="flex items-center space-x-3 p-3 bg-gray-700 rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold">
+              <div className="p-4 border-t border-gray-800/50">
+                <div className="flex items-center space-x-3 p-3 bg-gray-800/50 rounded-xl">
+                  <div className="w-12 h-12 rounded-full bg-cyan-500/30 flex items-center justify-center text-white font-bold text-lg">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-white">{user.name}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="font-semibold text-white">{user.name}</p>
+                    <p className="text-sm text-gray-400">
                       Saldo: S/ {balance.toFixed(2)}
                     </p>
                   </div>
@@ -815,64 +841,70 @@ const Netflix = () => {
         </aside>
 
         <main
-          className={`flex-1 transition-all duration-300 ${
-            menuOpen ? "ml-64" : "ml-0"
-          } md:ml-64 p-4 pt-20 md:pt-4`}
+          className={`flex-1 transition-all duration-300 p-4 sm:p-6 md:pt-4 md:ml-64 min-h-screen`}
         >
-          <section className="relative h-64 bg-gradient-to-r from-gray-900 to-gray-800 flex items-center justify-center overflow-hidden rounded-lg shadow-md mb-6">
-            <div className="absolute inset-0 bg-black opacity-30"></div>
+          <section
+            className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
+            style={{
+              backgroundImage:
+                "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
             <div className="relative z-10 text-center px-4">
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
                 Cuentas Premium de Netflix
               </h1>
-              <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
                 Disfruta de los mejores planes de Netflix a precios increíbles
               </p>
             </div>
           </section>
 
           <section className="container mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Planes Disponibles</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                Planes Disponibles
+              </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
-                className="text-sm text-cyan-400 hover:underline"
+                className="text-sm sm:text-base text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
               >
                 Términos Generales
               </button>
             </div>
 
             {filteredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-400 text-lg">
+              <div className="text-center py-16">
+                <p className="text-gray-300 text-lg sm:text-xl">
                   No se encontraron productos que coincidan con tu búsqueda
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 sm:gap-10">
                 {filteredProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 min-w-[250px] border border-gray-700/50"
                   >
-                    <div className="relative h-48 overflow-hidden">
+                    <div className="relative h-52 sm:h-56 overflow-hidden">
                       <img
                         src={product.image || "https://via.placeholder.com/300"}
                         alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
                       {renderProductStatus(product)}
                     </div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-lg mb-2 text-white">
+                    <div className="p-5">
+                      <h3 className="font-semibold text-lg sm:text-xl text-white mb-3">
                         {product.name}
                       </h3>
-                      <div className="text-sm text-gray-300 space-y-1 mb-3">
+                      <div className="text-sm text-gray-300 space-y-2 mb-4">
                         <p className="flex items-center">
                           <span className="font-medium text-gray-400">
                             Proveedor:
                           </span>
-                          <span className="ml-1 text-white">
+                          <span className="ml-2 text-gray-200">
                             {product.provider}
                           </span>
                         </p>
@@ -880,46 +912,45 @@ const Netflix = () => {
                           <span className="font-medium text-gray-400">
                             Duración:
                           </span>
-                          <span className="ml-1 text-white">
+                          <span className="ml-2 text-gray-200">
                             {product.duration || "1 mes"}
                           </span>
                         </p>
                         <p className="flex items-center">
                           <span className="font-medium text-gray-400">Tipo:</span>
-                          <span className="ml-1 text-white">
+                          <span className="ml-2 text-gray-200">
                             {product.type || "Premium"}
                           </span>
                         </p>
                       </div>
                       <div className="flex justify-between items-center mb-4">
-                        <span className="text-white font-bold text-xl">
+                        <span className="text-white font-bold text-xl sm:text-2xl">
                           S/ {formatPrice(product.price)}
                         </span>
                       </div>
-                      <div className="flex space-x-2 mb-3">
+                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-4">
                         <button
                           onClick={() => showDetails(product)}
-                          className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm flex items-center justify-center transition-colors"
+                          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-200 rounded-xl text-sm flex items-center justify-center transition-all border border-gray-600/50"
                         >
-                          <FiInfo className="mr-1" /> Detalles
+                          <FiInfo className="mr-2" /> Detalles
                         </button>
                         <button
                           onClick={() => showTerms(product)}
-                          className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm flex items-center justify-center transition-colors"
+                          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-200 rounded-xl text-sm flex items-center justify-center transition-all border border-gray-600/50"
                         >
-                          <FiFileText className="mr-1" /> Términos
+                          <FiFileText className="mr-2" /> Términos
                         </button>
                       </div>
                       <button
                         onClick={() => handlePurchase(product)}
                         disabled={
-                          product.status === "En stock" &&
-                          product.stock <= 0
+                          product.status === "En stock" && product.stock <= 0
                         }
-                        className={`w-full py-2 rounded-lg flex items-center justify-center transition-colors ${
+                        className={`w-full py-3 rounded-xl flex items-center justify-center transition-all ${
                           product.status === "A pedido" || product.stock > 0
-                            ? "bg-cyan-600 hover:bg-cyan-700 text-white"
-                            : "bg-red-900 text-white cursor-not-allowed"
+                            ? "bg-cyan-500 hover:bg-cyan-600 text-white"
+                            : "bg-red-600/50 text-gray-300 cursor-not-allowed"
                         }`}
                       >
                         <FiShoppingCart className="mr-2" />
@@ -939,46 +970,46 @@ const Netflix = () => {
 
         {menuOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setMenuOpen(false)}
           ></div>
         )}
       </div>
 
       {purchaseModal && user && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-700/50 animate-fadeIn">
+            <div className="p-6 sm:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-white">
                   {purchaseModal.product.status === "A pedido"
                     ? "Confirmar Pedido"
                     : "Confirmar Compra"}
                 </h2>
                 <button
                   onClick={() => setPurchaseModal(null)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-all"
                 >
-                  <FiX />
+                  <FiX size={24} />
                 </button>
               </div>
-              <div className="mb-6 p-4 bg-gray-700 rounded-lg border border-gray-600">
-                <h3 className="font-bold text-white">
+              <div className="mb-6 p-4 bg-gray-700/50 rounded-xl border border-gray-600/50">
+                <h3 className="font-semibold text-lg text-white">
                   {purchaseModal.product.name}
                 </h3>
-                <p className="text-white font-bold text-xl">
+                <p className="text-white font-bold text-xl sm:text-2xl mt-1">
                   S/ {formatPrice(purchaseModal.product.price)}
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-300 mt-2">
                   Proveedor: {purchaseModal.product.provider}
                 </p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-gray-300 mt-1">
                   Estado: {purchaseModal.product.status}
                 </p>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
                     Nombre completo
                   </label>
                   <input
@@ -990,12 +1021,12 @@ const Netflix = () => {
                         customerName: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 text-white transition-all"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
                     Número de WhatsApp
                   </label>
                   <input
@@ -1007,7 +1038,7 @@ const Netflix = () => {
                         phoneNumber: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 text-white transition-all"
                     placeholder="Ej. 999888777"
                     required
                   />
@@ -1016,15 +1047,15 @@ const Netflix = () => {
                   <input
                     type="checkbox"
                     id="termsCheck"
-                    className="mt-1 mr-2 bg-gray-700 border-gray-600 text-cyan-500 focus:ring-cyan-500"
+                    className="mt-1 mr-3 bg-gray-700 border-gray-600 text-cyan-400 focus:ring-cyan-400 rounded"
                     required
                   />
-                  <label htmlFor="termsCheck" className="text-sm text-gray-400">
+                  <label htmlFor="termsCheck" className="text-sm text-gray-300">
                     Acepto los{" "}
                     <button
                       type="button"
                       onClick={() => setTermsModal(true)}
-                      className="text-cyan-400 hover:underline"
+                      className="text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
                     >
                       Términos
                     </button>{" "}
@@ -1032,24 +1063,24 @@ const Netflix = () => {
                     <button
                       type="button"
                       onClick={() => setGeneralTermsModal(true)}
-                      className="text-cyan-400 hover:underline"
+                      className="text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
                     >
                       Condiciones Generales
                     </button>
                   </label>
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-end space-x-3 mt-8">
                 <button
                   onClick={() => setPurchaseModal(null)}
-                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 border border-gray-600/50 rounded-xl text-gray-300 hover:bg-gray-700/50 transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={finalizePurchase}
                   disabled={loading}
-                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-700 disabled:text-gray-400 flex items-center transition-colors"
+                  className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 disabled:bg-gray-700/50 disabled:text-gray-400 flex items-center transition-all"
                 >
                   {loading && <FiLoader className="animate-spin mr-2" />}
                   <span>
@@ -1065,30 +1096,30 @@ const Netflix = () => {
       )}
 
       {detailModal && !termsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-bold text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-700/50 animate-fadeIn">
+            <div className="p-6 sm:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-white">
                   {detailModal.name}
                 </h2>
                 <button
                   onClick={() => setDetailModal(null)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-all"
                 >
-                  <FiX />
+                  <FiX size={24} />
                 </button>
               </div>
-              <div className="space-y-4">
-                <div className="bg-gray-700 p-3 rounded-lg border border-gray-600">
+              <div className="space-y-5">
+                <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">Proveedor:</h3>
                   <p className="text-gray-300">{detailModal.provider}</p>
                 </div>
-                <div className="bg-gray-700 p-3 rounded-lg border border-gray-600">
+                <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">
                     Detalles de la cuenta:
                   </h3>
-                  <div className="p-2 bg-gray-800 rounded-md">
+                  <div className="p-3 bg-gray-800/50 rounded-lg">
                     <pre className="text-sm text-gray-300 whitespace-pre-wrap">
                       {detailModal.accountDetails}
                     </pre>
@@ -1100,7 +1131,7 @@ const Netflix = () => {
                   setDetailModal(null);
                   setTermsModal(true);
                 }}
-                className="w-full mt-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors border border-gray-600"
+                className="w-full mt-6 py-2 bg-gray-700/50 text-white rounded-xl hover:bg-gray-600/50 transition-all border border-gray-600/50"
               >
                 Ver Términos Específicos
               </button>
@@ -1110,30 +1141,30 @@ const Netflix = () => {
       )}
 
       {termsModal && detailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-700">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-bold text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-700/50 animate-fadeIn">
+            <div className="p-6 sm:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-white">
                   Términos - {detailModal.name}
                 </h2>
                 <button
                   onClick={() => setTermsModal(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-all"
                 >
-                  <FiX />
+                  <FiX size={24} />
                 </button>
               </div>
               <div className="text-gray-300">
-                <div className="bg-gray-700 p-3 rounded-lg mb-4 border border-gray-600">
-                  <h3 className="font-bold text-white mb-2">
+                <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
+                  <h3 className="font-semibold text-white mb-2">
                     Proveedor: {detailModal.provider}
                   </h3>
                 </div>
-                <h3 className="font-bold text-white mb-2">
+                <h3 className="font-semibold text-white mb-2">
                   Términos específicos:
                 </h3>
-                <div className="bg-gray-700 p-3 rounded-lg mb-4 border border-gray-600">
+                <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
                   <pre className="whitespace-pre-wrap text-gray-300">
                     {detailModal.terms}
                   </pre>
@@ -1143,7 +1174,7 @@ const Netflix = () => {
                     setTermsModal(false);
                     setGeneralTermsModal(true);
                   }}
-                  className="w-full py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 mb-4 transition-colors border border-gray-600"
+                  className="w-full py-2 bg-gray-700/50 text-white rounded-xl hover:bg-gray-600/50 mb-4 transition-all border border-gray-600/50"
                 >
                   Ver Términos Generales
                 </button>
@@ -1154,24 +1185,24 @@ const Netflix = () => {
       )}
 
       {generalTermsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-700">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-bold text-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-700/50 animate-fadeIn">
+            <div className="p-6 sm:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-white">
                   Términos y Condiciones Generales
                 </h2>
                 <button
                   onClick={() => setGeneralTermsModal(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-all"
                 >
-                  <FiX />
+                  <FiX size={24} />
                 </button>
               </div>
               <div className="text-gray-300">
-                <div className="space-y-4">
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <h3 className="font-bold text-white mb-2">
+                <div className="space-y-5">
+                  <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
+                    <h3 className="font-semibold text-white mb-2">
                       1. Proceso de Compra
                     </h3>
                     <p>
@@ -1180,16 +1211,16 @@ const Netflix = () => {
                       accesos a tu cuenta.
                     </p>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <h3 className="font-bold text-white mb-2">2. Garantía</h3>
+                  <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
+                    <h3 className="font-semibold text-white mb-2">2. Garantía</h3>
                     <p>
                       Todos los productos tienen una garantía de 7 días. Si tienes
                       problemas con tu cuenta durante este periodo, el proveedor
                       está obligado a resolverlos o reembolsarte.
                     </p>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <h3 className="font-bold text-white mb-2">
+                  <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
+                    <h3 className="font-semibold text-white mb-2">
                       3. Uso Responsable
                     </h3>
                     <p>
@@ -1198,15 +1229,15 @@ const Netflix = () => {
                       baneos por mal uso.
                     </p>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <h3 className="font-bold text-white mb-2">4. Soporte</h3>
+                  <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
+                    <h3 className="font-semibold text-white mb-2">4. Soporte</h3>
                     <p>
                       El soporte se realizará directamente con el proveedor
                       mediante el número de WhatsApp proporcionado.
                     </p>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <h3 className="font-bold text-white mb-2">5. Renovaciones</h3>
+                  <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
+                    <h3 className="font-semibold text-white mb-2">5. Renovaciones</h3>
                     <p>
                       Las renovaciones son manuales y deben solicitarse al
                       proveedor antes de que finalice el período contratado.
@@ -1216,7 +1247,7 @@ const Netflix = () => {
               </div>
               <button
                 onClick={() => setGeneralTermsModal(false)}
-                className="w-full mt-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                className="w-full mt-6 py-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all"
               >
                 Cerrar
               </button>
@@ -1225,20 +1256,22 @@ const Netflix = () => {
         </div>
       )}
 
-      <footer className="bg-gray-800 border-t border-gray-700 py-8">
+      <footer className="bg-gray-900/80 backdrop-blur-md border-t border-gray-800/50 py-6">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <img src={logo} alt="BlackStreaming" className="h-6 w-auto" />
-              <span className="text-sm font-medium text-white">
+          <div className="flex flex-col items-center space-y-4 md:flex-row md:justify-between md:space-y-0">
+            <div className="flex items-center space-x-2">
+              <img src={logo} alt="BlackStreaming" className="h-8 w-auto" />
+              <span className="text-sm font-semibold text-cyan-400">
                 BlackStreaming
               </span>
             </div>
-            <div className="text-sm text-gray-400 mb-4 md:mb-0">
+            <div className="text-sm text-gray-400 text-center">
               © {new Date().getFullYear()} BlackStreaming. Todos los derechos
               reservados.
             </div>
-            <div className="text-sm text-gray-400">Desarrollado por Saiph</div>
+            <div className="text-sm text-gray-400 text-center">
+              Desarrollado por Saiph
+            </div>
           </div>
         </div>
       </footer>

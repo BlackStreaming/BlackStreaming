@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { FiUser, FiLock, FiArrowLeft } from "react-icons/fi";
+import { FiUser, FiLock, FiArrowLeft, FiAlertCircle } from "react-icons/fi";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -16,6 +16,7 @@ const Login = () => {
     setError(null);
 
     try {
+      // Buscar el usuario en Firestore por nombre de usuario
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("username", "==", username));
       const querySnapshot = await getDocs(q);
@@ -29,24 +30,19 @@ const Login = () => {
       const userData = userDoc.data();
       const email = userData.email;
 
+      // Iniciar sesión con Firebase Authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Redirigir según el rol del usuario
       const role = userData.role;
       if (role === "user") navigate("/");
       else if (role === "affiliate") navigate("/");
       else if (role === "provider") navigate("/");
-      else if (role === "admin") navigate("/");
+      else if (role === "admin") navigate("/dashboard-admin"); // Ajustado para redirigir al dashboard de admin
     } catch (error) {
-      if (error.code === "auth/wrong-password") {
-        setError("La contraseña ingresada es incorrecta.");
-      } else if (error.code === "auth/invalid-email") {
-        setError("El correo ingresado no es válido.");
-      } else if (error.code === "auth/user-not-found") {
-        setError("El usuario no está registrado.");
-      } else {
-        setError("Usuario o contraseña incorrectos.");
-      }
+      // Mostrar un mensaje genérico para cualquier error de autenticación
+      setError("Usuario o contraseña incorrectos.");
     }
   };
 

@@ -797,7 +797,7 @@ const ChatGPT = () => {
                 to="/canva"
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
-                <div className=" $(-1)flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
                   <FiPenTool className="text-teal-400" />
                   <span>Canva</span>
                 </div>

@@ -327,20 +327,20 @@ const DashboardUser = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-          <FiAlertCircle className="mx-auto text-4xl text-red-500 mb-4" />
+        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+          <FiAlertCircle className="mx-auto text-4xl text-red-400 mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Error</h3>
           <p className="text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => setError(null)}
-            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+            className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
           >
             Aceptar
           </button>
@@ -351,13 +351,13 @@ const DashboardUser = () => {
     switch (activePage) {
       case "inicio":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">
               Bienvenido, <span className="text-cyan-400">{userName}</span>
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Información de cuenta</h3>
                 <div className="space-y-2 text-gray-300">
                   <p className="flex items-center">
@@ -371,12 +371,12 @@ const DashboardUser = () => {
                 </div>
               </div>
               
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Saldo disponible</h3>
                 <p className="text-3xl font-bold text-white">S/ {balance.toFixed(2)}</p>
               </div>
               
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Pedidos activos</h3>
                 <p className="text-3xl font-bold text-white">
                   {orders.filter(o => {
@@ -387,19 +387,19 @@ const DashboardUser = () => {
               </div>
             </div>
             
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
               <h3 className="text-lg font-semibold text-white mb-3">Pedidos recientes</h3>
               {orders.slice(0, 3).map((order, index) => {
                 const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                 const isOnDemand = order.status === "pending";
                 return (
-                  <div key={index} className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors">
+                  <div key={index} className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2">
                     <div className="flex justify-between items-center">
                       <p className="font-medium text-white">{order.productName}</p>
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        isOnDemand ? "bg-yellow-900 text-yellow-400" :
-                        isActive ? "bg-green-900 text-green-400" :
-                        "bg-red-900 text-red-400"
+                        isOnDemand ? "bg-yellow-900/80 text-yellow-400" :
+                        isActive ? "bg-green-900/80 text-green-400" :
+                        "bg-red-900/80 text-red-400"
                       }`}>
                         {isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}
                       </span>
@@ -428,8 +428,8 @@ const DashboardUser = () => {
       case "recargar":
         return (
           <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-4">Recargar saldo</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Recargar saldo</h3>
               
               <div className="max-w-md mx-auto">
                 <div className="mb-4">
@@ -438,7 +438,7 @@ const DashboardUser = () => {
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                     placeholder="Mínimo S/ 10.00"
                     min="10"
                     step="0.01"
@@ -448,9 +448,9 @@ const DashboardUser = () => {
                 <button
                   onClick={handleTopUpRequest}
                   disabled={!amount || parseFloat(amount) < 10}
-                  className={`w-full py-3 px-4 rounded-lg font-medium ${
+                  className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-300 ${
                     amount && parseFloat(amount) >= 10
-                      ? "bg-cyan-600 hover:bg-cyan-700 text-white"
+                      ? "bg-cyan-500 hover:bg-cyan-600 text-white"
                       : "bg-gray-600 text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -459,7 +459,7 @@ const DashboardUser = () => {
               </div>
 
               {/* Instrucciones de método de pago */}
-              <div className="mt-6 bg-gray-700 p-4 rounded-lg border border-gray-600 max-w-md mx-auto">
+              <div className="mt-6 bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50 max-w-md mx-auto">
                 <h4 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiDollarSign className="mr-2" /> ¿Cómo realizar tu recarga?
                 </h4>
@@ -474,35 +474,35 @@ const DashboardUser = () => {
                   href="https://wa.me/51940505969?text=Hola%2C%20he%20realizado%20una%20recarga%20a%20trav%C3%A9s%20de%20Yape.%20Por%20favor%2C%20confirma%20mi%20pago."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all duration-300"
                 >
                   <FiMessageCircle className="mr-2" /> Confirmar por WhatsApp
                 </a>
               </div>
             </div>
 
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-4">Historial de recargas</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Historial de recargas</h3>
               
               {topUps.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700">
+                  <table className="min-w-full divide-y divide-gray-600/50">
+                    <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {topUps.map((topUp, index) => (
-                        <tr key={index} className="hover:bg-gray-700 transition-colors">
+                        <tr key={index} className="hover:bg-gray-700/50 transition-all duration-300">
                           <td className="px-4 py-4 whitespace-nowrap text-white">S/ {topUp.amount.toFixed(2)}</td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              topUp.status === "aprobado" ? "bg-green-900 text-green-400" :
-                              topUp.status === "pendiente" ? "bg-yellow-900 text-yellow-400" :
-                              "bg-red-900 text-red-400"
+                              topUp.status === "aprobado" ? "bg-green-900/80 text-green-400" :
+                              topUp.status === "pendiente" ? "bg-yellow-900/80 text-yellow-400" :
+                              "bg-red-900/80 text-red-400"
                             }`}>
                               {topUp.status}
                             </span>
@@ -525,11 +525,11 @@ const DashboardUser = () => {
 
       case "pedidos":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Mis pedidos</h3>
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Mis pedidos</h3>
             
             {orders.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {orders.map((order, index) => {
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
@@ -573,8 +573,8 @@ const DashboardUser = () => {
                   );
 
                   return (
-                    <div key={index} className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                      <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
+                    <div key={index} className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+                      <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
                         <div className="flex items-center space-x-3">
                           {statusIcon}
                           <div>
@@ -592,10 +592,10 @@ const DashboardUser = () => {
                         </div>
                       </div>
                       
-                      <div className="p-4 bg-gray-800">
+                      <div className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                           {/* Sección de Detalles de la Cuenta */}
-                          <div className="bg-gray-700 p-4 rounded-lg">
+                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiUser className="mr-2" /> Detalles de la Cuenta
                             </h5>
@@ -624,7 +624,7 @@ const DashboardUser = () => {
                           </div>
 
                           {/* Sección de Información del Pedido y Proveedor */}
-                          <div className="bg-gray-700 p-4 rounded-lg">
+                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiFileText className="mr-2" /> Información del Pedido
                             </h5>
@@ -640,9 +640,9 @@ const DashboardUser = () => {
                               <p>
                                 <span className="font-medium text-gray-400">Estado:</span> 
                                 <span className={`block px-2 py-1 text-xs rounded-full ${
-                                  isOnDemand ? 'bg-yellow-900 text-yellow-400' :
-                                  isActive ? 'bg-green-900 text-green-400' :
-                                  'bg-red-900 text-red-400'
+                                  isOnDemand ? 'bg-yellow-900/80 text-yellow-400' :
+                                  isActive ? 'bg-green-900/80 text-green-400' :
+                                  'bg-red-900/80 text-red-400'
                                 }`}>
                                   {isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}
                                 </span>
@@ -663,7 +663,7 @@ const DashboardUser = () => {
                           </div>
 
                           {/* Sección de Información del Cliente */}
-                          <div className="bg-gray-700 p-4 rounded-lg">
+                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiUser className="mr-2" /> Información del Cliente
                             </h5>
@@ -686,7 +686,7 @@ const DashboardUser = () => {
                             href={`https://wa.me/${order.providerPhone}?text=${whatsappProviderMessage}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
                           >
                             <FiMessageCircle size={18} /> Contactar Proveedor
                           </a>
@@ -694,10 +694,10 @@ const DashboardUser = () => {
                           <button
                             onClick={() => handleRenewal(order)}
                             disabled={loading}
-                            className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                            className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
                               loading 
                                 ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
-                                : "bg-cyan-600 hover:bg-cyan-700 text-white"
+                                : "bg-cyan-500 hover:bg-cyan-600 text-white"
                             }`}
                           >
                             <FiRefreshCw size={18} /> Renovar Pedido
@@ -708,7 +708,7 @@ const DashboardUser = () => {
                               href={`https://wa.me/${order.client.phone}?text=${whatsappClientMessage}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
                             >
                               <FiMessageCircle size={18} /> Contactar Cliente por WhatsApp
                             </a>
@@ -731,30 +731,17 @@ const DashboardUser = () => {
 
       case "configuracion":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Configuración de cuenta</h3>
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-2xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Configuración de cuenta</h3>
             
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                const userRef = doc(db, "users", userId);
-                await setDoc(userRef, {
-                  username: userName,
-                  email: email,
-                }, { merge: true });
-                showModal("Éxito", "Configuración actualizada correctamente");
-              } catch (error) {
-                setError("Error al actualizar la configuración");
-                console.error("Error updating settings:", error);
-              }
-            }} className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <label className="block text-gray-300 mb-2">Nombre de usuario</label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   required
                 />
               </div>
@@ -765,7 +752,7 @@ const DashboardUser = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   required
                 />
               </div>
@@ -775,24 +762,36 @@ const DashboardUser = () => {
                 <input
                   type="password"
                   placeholder="Nueva contraseña (dejar vacío para no cambiar)"
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   disabled
                 />
                 <p className="text-sm text-gray-400 mt-1">Cambio de contraseña no disponible en esta versión.</p>
               </div>
               
               <button
-                type="submit"
-                className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium mt-4"
+                onClick={async () => {
+                  try {
+                    const userRef = doc(db, "users", userId);
+                    await setDoc(userRef, {
+                      username: userName,
+                      email: email,
+                    }, { merge: true });
+                    showModal("Éxito", "Configuración actualizada correctamente");
+                  } catch (error) {
+                    setError("Error al actualizar la configuración");
+                    console.error("Error updating settings:", error);
+                  }
+                }}
+                className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium mt-4 transition-all duration-300"
               >
                 Guardar cambios
               </button>
-            </form>
+            </div>
             
-            <div className="mt-8 border-t border-gray-700 pt-6">
+            <div className="mt-8 border-t border-gray-600/50 pt-6">
               <button
                 onClick={handleLogout}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900 hover:bg-red-800 text-white rounded-lg font-medium transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900/80 hover:bg-red-800 text-white rounded-xl font-medium transition-all duration-300"
               >
                 <FiLogOut /> Cerrar sesión
               </button>
@@ -802,13 +801,13 @@ const DashboardUser = () => {
 
       default:
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-            <FiAlertCircle className="mx-auto text-4xl text-yellow-500 mb-4" />
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+            <FiAlertCircle className="mx-auto text-4xl text-yellow-400 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
             <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
             <button
               onClick={() => setActivePage('inicio')}
-              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+              className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
             >
               Volver al inicio
             </button>
@@ -818,32 +817,32 @@ const DashboardUser = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
       {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none"
+          className="p-2 rounded-full bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 border border-gray-700/50"
         >
           <FiMenu className="text-xl" />
         </button>
       </div>
       
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-800 overflow-y-auto`}>
+      <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}>
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
             <button
               onClick={() => setMenuOpen(false)}
-              className="md:hidden p-1 rounded-lg hover:bg-gray-700"
+              className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiX className="text-lg" />
             </button>
           </div>
           
-          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-700 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold">
+          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50">
+            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -855,28 +854,28 @@ const DashboardUser = () => {
           <nav className="flex-1 space-y-1">
             <button
               onClick={() => { setActivePage('inicio'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'inicio' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'inicio' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
             >
               <FiHome /> <span>Inicio</span>
             </button>
             
             <button
               onClick={() => { setActivePage('recargar'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'recargar' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'recargar' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
             >
               <FiDollarSign /> <span>Recargar saldo</span>
             </button>
             
             <button
               onClick={() => { setActivePage('pedidos'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'pedidos' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'pedidos' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
             >
               <FiShoppingCart /> <span>Mis pedidos</span>
             </button>
             
             <button
               onClick={() => { setActivePage('configuracion'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${activePage === 'configuracion' ? 'bg-cyan-900 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'configuracion' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
             >
               <FiSettings /> <span>Configuración</span>
             </button>
@@ -885,7 +884,7 @@ const DashboardUser = () => {
           <div className="mt-auto pt-4">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiLogOut /> <span>Cerrar sesión</span>
             </button>
@@ -894,29 +893,29 @@ const DashboardUser = () => {
       </aside>
       
       {/* Main content */}
-      <main className="md:ml-64 p-4 pt-20 md:pt-4">
+      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">
         {renderContent()}
       </main>
       
       {/* Modal for Alerts */}
       {modal.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-white">{modal.title}</h2>
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white transition-all duration-300"
                 >
-                  <FiX />
+                  <FiX size={20} />
                 </button>
               </div>
               <p className="text-gray-300 mb-6">{modal.message}</p>
               <div className="flex justify-end">
                 <button
                   onClick={closeModal}
-                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
                 >
                   Aceptar
                 </button>
@@ -929,7 +928,7 @@ const DashboardUser = () => {
       {/* Overlay for mobile menu */}
       {menuOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setMenuOpen(false)}
         ></div>
       )}

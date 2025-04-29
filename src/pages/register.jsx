@@ -2,7 +2,48 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { db } from "../firebase"; // Import Firestore configuration
 import { doc, setDoc } from "firebase/firestore"; // Firestore functions
-import { FiAlertCircle, FiUser, FiMail, FiLock, FiArrowLeft } from "react-icons/fi";
+import { FiUser, FiMail, FiLock, FiArrowLeft, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+
+// Modal Component for Notifications
+const NotificationModal = ({ isOpen, message, type, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div
+        className={`bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full border transform transition-all duration-300 ${
+          type === "success" ? "border-green-500 scale-100" : "border-red-500 scale-100"
+        }`}
+      >
+        <div className="flex items-center mb-4">
+          {type === "success" ? (
+            <FiCheckCircle className="text-green-400 text-2xl mr-2" />
+          ) : (
+            <FiAlertCircle className="text-red-400 text-2xl mr-2" />
+          )}
+          <h3
+            className={`text-lg font-bold ${
+              type === "success" ? "text-green-400" : "text-red-400"
+            }`}
+          >
+            {type === "success" ? "Éxito" : "Error"}
+          </h3>
+        </div>
+        <p className="text-gray-300 mb-6">{message}</p>
+        <button
+          onClick={onClose}
+          className={`w-full py-2 rounded-lg font-medium transition-colors ${
+            type === "success"
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-red-600 hover:bg-red-700 text-white"
+          }`}
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -10,13 +51,17 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user"); // Default role: "user"
   const [referrerCode, setReferrerCode] = useState(""); // State for referral code
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState({
+    isOpen: false,
+    message: "",
+    type: "success",
+  });
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError(null);
+    setModal({ isOpen: false, message: "", type: "success" });
     setLoading(true);
 
     try {
@@ -30,7 +75,7 @@ const Register = () => {
       if (!password || password.length < 6) {
         throw new Error("La contraseña debe tener al menos 6 caracteres.");
       }
-      if (!["user", "admin", "provider", "affiliate"].includes(role)) {
+      if (!["user", "affiliate", "provider"].includes(role)) {
         throw new Error("Rol no válido.");
       }
 
@@ -45,11 +90,24 @@ const Register = () => {
         createdAt: new Date().toISOString(),
       });
 
-      alert("Tu solicitud de registro ha sido enviada y está pendiente de aprobación.");
-      navigate("/login");
+      // Show success modal
+      setModal({
+        isOpen: true,
+        message: "Tu solicitud de registro ha sido enviada y está pendiente de aprobación.",
+        type: "success",
+      });
+
+      // Navigate to login after a short delay to allow the user to see the modal
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (error) {
       console.error("Error al registrar la solicitud:", error.message);
-      setError("Error al enviar la solicitud de registro. Por favor, inténtalo de nuevo.");
+      setModal({
+        isOpen: true,
+        message: error.message || "Error al enviar la solicitud de registro. Por favor, inténtalo de nuevo.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -64,13 +122,6 @@ const Register = () => {
         <p className="text-sm text-center text-gray-400 mb-6">
           Regístrate para acceder al sistema.
         </p>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-900 text-red-300 rounded-lg flex items-center">
-            <FiAlertCircle className="mr-2" />
-            <span>{error}</span>
-          </div>
-        )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
@@ -129,18 +180,29 @@ const Register = () => {
                 <option value="user">Usuario</option>
                 <option value="affiliate">Afiliado</option>
                 <option value="provider">Proveedor</option>
-                <option value="admin">Administrador</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-gray-300 mb-1">Código de Referido (opcional)</label>
+            <label className="block text-gray-300 mb-1">
+              Código de Referido (opcional)
+            </label>
             <input
               type="text"
               value={referrerCode}
@@ -159,16 +221,51 @@ const Register = () => {
                 : "bg-cyan-600 hover:bg-cyan-700 text-white"
             }`}
           >
-            {loading ? "Registrando..." : "Registrarse"}
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <svg
+                  className="animate-spin h-5 w-5 text-white mr-2"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8h-8z"
+                  />
+                </svg>
+                Registrando...
+              </div>
+            ) : (
+              "Registrarse"
+            )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <Link to="/login" className="text-gray-400 hover:text-white flex items-center justify-center">
+          <Link
+            to="/login"
+            className="text-gray-400 hover:text-white flex items-center justify-center"
+          >
             <FiArrowLeft className="mr-1" /> ¿Ya tienes una cuenta? Inicia sesión
           </Link>
         </div>
       </div>
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={modal.isOpen}
+        message={modal.message}
+        type={modal.type}
+        onClose={() => setModal({ isOpen: false, message: "", type: "success" })}
+      />
     </div>
   );
 };

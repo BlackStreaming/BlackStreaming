@@ -512,20 +512,20 @@ const DashboardProvider = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-          <FiAlertCircle className="mx-auto text-4xl text-red-500 mb-4" />
+        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+          <FiAlertCircle className="mx-auto text-4xl text-red-400 mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Error</h3>
           <p className="text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => setError("")}
-            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+            className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
           >
             Aceptar
           </button>
@@ -536,20 +536,26 @@ const DashboardProvider = () => {
     switch (activeSection) {
       case "inicio":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">
               Bienvenido, <span className="text-cyan-400">{username}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiBox className="mr-2" /> Inventario
                 </h3>
                 <p className="text-3xl font-bold text-white">{products.length}</p>
                 <p className="text-gray-400">Productos registrados</p>
                 <p className="text-gray-400">Stock total: {totalStock}</p>
+                <button
+                  onClick={() => setActiveSection("inventario")}
+                  className="text-cyan-400 hover:underline text-sm mt-2"
+                >
+                  Ver inventario
+                </button>
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiDollarSign className="mr-2" /> Ganancias
                 </h3>
@@ -559,40 +565,44 @@ const DashboardProvider = () => {
                   <>
                     <p className="text-3xl font-bold text-white">S/ {totalEarnings.toFixed(2)}</p>
                     <p className="text-gray-400">{orders.length} ventas realizadas</p>
+                    <p className="text-gray-400">Disponible: S/ {availableBalance.toFixed(2)}</p>
                     <button
                       onClick={() => setActiveSection("retiros")}
-                      className="text-cyan-400 hover:underline text-sm"
+                      className="text-cyan-400 hover:underline text-sm mt-2"
                     >
                       Retirar fondos
                     </button>
                   </>
                 )}
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiUser className="mr-2" /> Mi Cuenta
                 </h3>
                 <p className="text-lg font-medium text-white">{username}</p>
                 <p className="text-sm text-gray-400 truncate">{email}</p>
+                <p className="text-xs mt-2 bg-cyan-900 text-cyan-400 py-1 px-2 rounded-full inline-block">
+                  {isAdmin ? "Administrador" : "Proveedor"}
+                </p>
                 <button
                   onClick={() => setActiveSection("configuracion")}
-                  className="text-cyan-400 hover:underline text-sm"
+                  className="text-cyan-400 hover:underline text-sm mt-2"
                 >
                   Editar perfil
                 </button>
               </div>
             </div>
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
               <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
                 <FiShoppingCart className="mr-2" /> Pedidos recientes
               </h3>
               {orders.length === 0 ? (
                 <p className="text-gray-400 py-2 text-center">
-                  No hay pedidos recientes. Verifica que las ventas tengan el providerId correcto en Firestore.
+                  No hay pedidos recientes.
                 </p>
               ) : (
                 orders.slice(0, 3).map((order, index) => (
-                  <div key={index} className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors">
+                  <div key={index} className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2">
                     <div className="flex justify-between items-center">
                       <div className="w-2/3">
                         <p className="font-medium text-white truncate">{order.productName}</p>
@@ -620,22 +630,22 @@ const DashboardProvider = () => {
 
       case "inventario":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-              <h3 className="text-xl font-bold text-white flex items-center">
+              <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center">
                 <FiBox className="mr-2" /> Inventario
               </h3>
               <button
                 onClick={() => setActiveSection("subirProducto")}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center w-full md:w-auto justify-center transition-colors"
+                className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl flex items-center w-full md:w-auto justify-center transition-all duration-300"
               >
                 <FiPlus className="mr-2" /> Nuevo Producto
               </button>
             </div>
             {products.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-600">
-                  <thead className="bg-gray-700">
+                <table className="min-w-full divide-y divide-gray-600/50">
+                  <thead className="bg-gray-700/50 backdrop-blur-sm">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Producto</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Precio</th>
@@ -644,9 +654,9 @@ const DashboardProvider = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-gray-800 divide-y divide-gray-600">
+                  <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                     {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-700 transition-colors">
+                      <tr key={product.id} className="hover:bg-gray-700/50 transition-all duration-300">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             {product.image && (
@@ -665,7 +675,7 @@ const DashboardProvider = () => {
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              product.status === "En stock" ? "bg-green-900 text-green-400" : "bg-yellow-900 text-yellow-400"
+                              product.status === "En stock" ? "bg-green-900/80 text-green-400" : "bg-yellow-900/80 text-yellow-400"
                             }`}
                           >
                             {product.status}
@@ -699,7 +709,7 @@ const DashboardProvider = () => {
                 <p className="text-gray-400">Agrega tu primer producto para comenzar</p>
                 <button
                   onClick={() => setActiveSection("subirProducto")}
-                  className="mt-4 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center mx-auto transition-colors"
+                  className="mt-4 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl flex items-center mx-auto transition-all duration-300"
                 >
                   <FiPlus className="mr-2" /> Agregar Producto
                 </button>
@@ -710,12 +720,12 @@ const DashboardProvider = () => {
 
       case "subirProducto":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-4xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-4xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
               <FiUpload className="mr-2" /> Subir Nuevo Producto
             </h3>
             {error && (
-              <div className="bg-red-900 border-l-4 border-red-500 p-4 mb-6">
+              <div className="bg-red-900/80 border-l-4 border-red-500 p-4 mb-6 rounded-xl">
                 <div className="flex">
                   <FiAlertCircle className="h-5 w-5 text-red-400" />
                   <p className="ml-3 text-sm text-red-300">{error}</p>
@@ -726,7 +736,7 @@ const DashboardProvider = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-1">
                   <label className="block text-gray-300 mb-2">Imagen del producto</label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600/50 border-dashed rounded-xl bg-gray-700/50 backdrop-blur-sm">
                     {product.image ? (
                       <div className="relative">
                         <img src={product.image} alt="Preview" className="mx-auto h-48 w-full object-contain" />
@@ -757,7 +767,7 @@ const DashboardProvider = () => {
                         <div className="flex text-sm text-gray-400 justify-center">
                           <label
                             htmlFor="file-upload"
-                            className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
+                            className="relative cursor-pointer bg-gray-800/50 rounded-xl font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
                           >
                             <span>Subir una imagen</span>
                             <input
@@ -783,7 +793,7 @@ const DashboardProvider = () => {
                       name="name"
                       value={product.name}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                       placeholder="Ej: Netflix Premium 1 mes"
                       required
                     />
@@ -795,7 +805,7 @@ const DashboardProvider = () => {
                         name="category"
                         value={product.category}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                       >
                         <option value="Netflix">Netflix</option>
                         <option value="Spotify">Spotify</option>
@@ -815,7 +825,7 @@ const DashboardProvider = () => {
                         name="status"
                         value={product.status}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                       >
                         <option value="En stock">En stock</option>
                         <option value="A pedido">A pedido</option>
@@ -830,7 +840,7 @@ const DashboardProvider = () => {
                         name="price"
                         value={product.price}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                         placeholder="Ej: 9.99"
                         step="0.01"
                         min="0"
@@ -844,7 +854,7 @@ const DashboardProvider = () => {
                         name="stock"
                         value={product.stock}
                         onChange={handleStockChange}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         min="1"
                         required
                       />
@@ -860,7 +870,7 @@ const DashboardProvider = () => {
                     name="duration"
                     value={product.duration}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                     placeholder="Dejar vacío para ilimitado"
                     min="1"
                   />
@@ -872,7 +882,7 @@ const DashboardProvider = () => {
                     name="providerPhone"
                     value={product.providerPhone}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                     placeholder="Ej: +51 987654321"
                     required={product.status === "A pedido"}
                   />
@@ -885,7 +895,7 @@ const DashboardProvider = () => {
                   value={product.details}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                   placeholder="Describe los detalles y características del producto"
                 ></textarea>
               </div>
@@ -896,7 +906,7 @@ const DashboardProvider = () => {
                   value={product.terms}
                   onChange={handleChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                   placeholder="Especifica los términos y condiciones de uso"
                 ></textarea>
               </div>
@@ -906,7 +916,7 @@ const DashboardProvider = () => {
                   <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
                   <div className="space-y-4">
                     {product.accounts.map((account, index) => (
-                      <div key={index} className="border border-gray-600 rounded-lg p-4 bg-gray-700">
+                      <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
                         <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div>
@@ -915,7 +925,7 @@ const DashboardProvider = () => {
                               type="email"
                               value={account.email}
                               onChange={(e) => handleAccountFieldChange(index, "email", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                               required
                             />
                           </div>
@@ -925,7 +935,7 @@ const DashboardProvider = () => {
                               type="text"
                               value={account.password}
                               onChange={(e) => handleAccountFieldChange(index, "password", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                               required
                             />
                           </div>
@@ -935,7 +945,7 @@ const DashboardProvider = () => {
                               type="text"
                               value={account.profile}
                               onChange={(e) => handleAccountFieldChange(index, "profile", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                               placeholder="Ej: Perfil 1"
                             />
                           </div>
@@ -948,13 +958,13 @@ const DashboardProvider = () => {
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
                   onClick={() => setActiveSection("inventario")}
-                  className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-xl hover:bg-gray-600/50 transition-all duration-300"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
+                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
                 >
                   Subir Producto
                 </button>
@@ -965,11 +975,11 @@ const DashboardProvider = () => {
 
       case "ganancias":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
               <FiDollarSign className="mr-2" /> Ganancias
             </h3>
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-gray-600/50 shadow-lg">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                 <div>
                   <h4 className="text-lg font-medium text-white mb-1">Ganancias totales</h4>
@@ -981,8 +991,8 @@ const DashboardProvider = () => {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-600">
-                <thead className="bg-gray-700">
+              <table className="min-w-full divide-y divide-gray-600/50">
+                <thead className="bg-gray-700/50 backdrop-blur-sm">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Producto</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoría</th>
@@ -993,9 +1003,9 @@ const DashboardProvider = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
                   </tr>
                 </thead>
-                <tbody className="bg-gray-800 divide-y divide-gray-600">
+                <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                   {orders.map((order, index) => (
-                    <tr key={index} className="hover:bg-gray-700 transition-colors">
+                    <tr key={index} className="hover:bg-gray-700/50 transition-all duration-300">
                       <td className="px-4 py-4 whitespace-nowrap text-white">{order.productName}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{getCategoryDisplayName(order.category)}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -1007,7 +1017,7 @@ const DashboardProvider = () => {
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-white">S/ {(order.amount || 0).toFixed(2)}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-400`}
+                          className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900/80 text-green-400"
                         >
                           Completado
                         </span>
@@ -1022,7 +1032,7 @@ const DashboardProvider = () => {
                 <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
                 <h4 className="text-lg font-medium text-gray-300">No hay ventas registradas</h4>
                 <p className="text-gray-400">
-                  Tus ventas aparecerán aquí. Verifica que las ventas tengan el providerId correcto en Firestore.
+                  Tus ventas aparecerán aquí.
                 </p>
               </div>
             )}
@@ -1031,51 +1041,90 @@ const DashboardProvider = () => {
 
       case "pedidos":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
               <FiShoppingCart className="mr-2" /> Pedidos
             </h3>
             {orders.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-600">
-                  <thead className="bg-gray-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Producto</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Comprador</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Detalles de cuenta</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-gray-800 divide-y divide-gray-600">
-                    {orders.map((order, index) => (
-                      <tr key={index} className="hover:bg-gray-700 transition-colors">
-                        <td className="px-4 py-4 whitespace-nowrap text-white">{order.productName}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{order.buyer}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{formatDate(order.date)}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white">S/ {(order.amount || 0).toFixed(2)}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {order.accountDetails ? (
-                            <div>
-                              <p>Email: {order.accountDetails.email}</p>
-                              <p>Password: {order.accountDetails.password}</p>
-                              <p>Profile: {order.accountDetails.profile || "N/A"}</p>
+              <div className="space-y-6">
+                {orders.map((order, index) => {
+                  const isOnDemand = order.status === "pending";
+                  const statusIcon = isOnDemand
+                    ? <FiClock className="text-yellow-400" />
+                    : <FiCheckCircle className="text-green-400" />;
+                  return (
+                    <div key={index} className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+                      <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          {statusIcon}
+                          <div>
+                            <h4 className="font-semibold text-white">{order.productName}</h4>
+                            <p className="text-xs text-gray-400">Categoría: {getCategoryDisplayName(order.category)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-white">S/ {(order.amount || 0).toFixed(2)}</p>
+                          <p className="text-xs text-gray-400">{formatDate(order.date)}</p>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
+                            <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
+                              <FiUser className="mr-2" /> Información del Comprador
+                            </h5>
+                            <div className="space-y-2 text-gray-300">
+                              <p>
+                                <span className="font-medium text-gray-400">Nombre:</span> 
+                                <span className="block text-white">{order.buyer}</span>
+                              </p>
+                              <p>
+                                <span className="font-medium text-gray-400">Email:</span> 
+                                <span className="block text-white">{order.buyerEmail}</span>
+                              </p>
+                              <p>
+                                <span className="font-medium text-gray-400">Teléfono:</span> 
+                                <span className="block text-white">{order.buyerPhone}</span>
+                              </p>
                             </div>
-                          ) : (
-                            "No disponible"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </div>
+                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
+                            <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
+                              <FiUser className="mr-2" /> Detalles de la Cuenta
+                            </h5>
+                            <div className="space-y-2 text-gray-300">
+                              {order.accountDetails ? (
+                                <>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Email:</span> 
+                                    <span className="block text-white break-all">{order.accountDetails.email}</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Contraseña:</span> 
+                                    <span className="block text-white break-all">{order.accountDetails.password}</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Perfil:</span> 
+                                    <span className="block text-white">{order.accountDetails.profile || "N/A"}</span>
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-gray-400">No disponible</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">
                 <FiShoppingCart className="mx-auto text-4xl text-gray-400 mb-3" />
                 <h4 className="text-lg font-medium text-gray-300">No hay pedidos registrados</h4>
                 <p className="text-gray-400">
-                  Los pedidos de tus productos aparecerán aquí. Verifica que las ventas tengan el providerId correcto en Firestore.
+                  Los pedidos de tus productos aparecerán aquí.
                 </p>
               </div>
             )}
@@ -1084,16 +1133,16 @@ const DashboardProvider = () => {
 
       case "retiros":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
             {isAdmin ? (
               <>
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
                   <FiCreditCard className="mr-2" /> Solicitudes de Retiro Pendientes
                 </h3>
                 {pendingWithdrawals.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-600">
-                      <thead className="bg-gray-700">
+                    <table className="min-w-full divide-y divide-gray-600/50">
+                      <thead className="bg-gray-700/50 backdrop-blur-sm">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Proveedor</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Método</th>
@@ -1102,9 +1151,9 @@ const DashboardProvider = () => {
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-gray-800 divide-y divide-gray-600">
+                      <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                         {pendingWithdrawals.map((withdrawal) => (
-                          <tr key={withdrawal.id} className="hover:bg-gray-700 transition-colors">
+                          <tr key={withdrawal.id} className="hover:bg-gray-700/50 transition-all duration-300">
                             <td className="px-4 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-white truncate max-w-xs">{withdrawal.provider}</div>
                               <div className="text-xs text-gray-400 truncate max-w-xs">{withdrawal.providerEmail}</div>
@@ -1143,10 +1192,10 @@ const DashboardProvider = () => {
               </>
             ) : (
               <>
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
                   <FiCreditCard className="mr-2" /> Retirar Dinero
                 </h3>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+                <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-gray-600/50 shadow-lg">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div>
                       <h4 className="text-lg font-medium text-white mb-1">Saldo disponible</h4>
@@ -1157,7 +1206,7 @@ const DashboardProvider = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+                  <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
                     <h4 className="text-lg font-medium text-white mb-4">Solicitar Retiro</h4>
                     <div className="space-y-4">
                       <div>
@@ -1166,7 +1215,7 @@ const DashboardProvider = () => {
                           type="number"
                           value={withdrawAmount}
                           onChange={(e) => setWithdrawAmount(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          className="w-full px-4 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                           placeholder="Ej: 150.00"
                           step="0.01"
                           min="0"
@@ -1179,7 +1228,7 @@ const DashboardProvider = () => {
                         <select
                           value={withdrawMethod}
                           onChange={(e) => setWithdrawMethod(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          className="w-full px-4 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         >
                           <option value="Yape">Yape</option>
                           <option value="Plin">Plin</option>
@@ -1193,7 +1242,7 @@ const DashboardProvider = () => {
                           type="text"
                           value={withdrawAccount}
                           onChange={(e) => setWithdrawAccount(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                          className="w-full px-4 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                           placeholder={withdrawMethod === "Yape" ? "Número de teléfono" : "Número de cuenta"}
                           required
                         />
@@ -1206,9 +1255,9 @@ const DashboardProvider = () => {
                           parseFloat(withdrawAmount) > availableBalance ||
                           !withdrawAccount
                         }
-                        className={`w-full px-6 py-3 rounded-lg font-medium transition-colors ${
+                        className={`w-full px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                           withdrawAmount && parseFloat(withdrawAmount) > 0 && parseFloat(withdrawAmount) <= availableBalance && withdrawAccount
-                            ? "bg-cyan-600 hover:bg-cyan-700 text-white"
+                            ? "bg-cyan-500 hover:bg-cyan-600 text-white"
                             : "bg-gray-600 text-gray-400 cursor-not-allowed"
                         }`}
                       >
@@ -1216,12 +1265,12 @@ const DashboardProvider = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+                  <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
                     <h4 className="text-lg font-medium text-white mb-4">Historial de Retiros</h4>
                     {withdrawals.length > 0 ? (
                       <div className="space-y-4">
                         {withdrawals.map((withdrawal, index) => (
-                          <div key={index} className="border-b border-gray-600 py-3 last:border-0">
+                          <div key={index} className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2">
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-medium text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</p>
@@ -1233,10 +1282,10 @@ const DashboardProvider = () => {
                               <span
                                 className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${
                                   withdrawal.status === "approved"
-                                    ? "bg-green-900 text-green-400"
+                                    ? "bg-green-900/80 text-green-400"
                                     : withdrawal.status === "rejected"
-                                    ? "bg-red-900 text-red-400"
-                                    : "bg-yellow-900 text-yellow-400"
+                                    ? "bg-red-900/80 text-red-400"
+                                    : "bg-yellow-900/80 text-yellow-400"
                                 }`}
                               >
                                 {withdrawal.status === "approved" ? "Aprobado" : withdrawal.status === "rejected" ? "Rechazado" : "Pendiente"}
@@ -1260,8 +1309,8 @@ const DashboardProvider = () => {
 
       case "configuracion":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-2xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
               <FiSettings className="mr-2" /> Configuración de cuenta
             </h3>
             <div className="space-y-4">
@@ -1271,7 +1320,7 @@ const DashboardProvider = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   required
                 />
               </div>
@@ -1282,7 +1331,7 @@ const DashboardProvider = () => {
                   name="email"
                   value={accountDetails.email}
                   onChange={handleAccountChange}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   required
                 />
               </div>
@@ -1293,7 +1342,7 @@ const DashboardProvider = () => {
                   name="password"
                   value={accountDetails.password}
                   onChange={handleAccountChange}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   placeholder="Dejar vacío para no cambiar"
                 />
               </div>
@@ -1304,53 +1353,69 @@ const DashboardProvider = () => {
                   value={accountDetails.preferences}
                   onChange={handleAccountChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   placeholder="Tus preferencias y configuraciones"
                 ></textarea>
               </div>
               <button
                 onClick={handleUpdateAccount}
-                className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
+                className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-all duration-300"
               >
                 Guardar cambios
+              </button>
+            </div>
+            <div className="mt-8 border-t border-gray-600/50 pt-6">
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900/80 hover:bg-red-800 text-white rounded-xl font-medium transition-all duration-300"
+              >
+                <FiLogOut /> Cerrar sesión
               </button>
             </div>
           </div>
         );
 
       default:
-        return null;
+        return (
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+            <FiAlertCircle className="mx-auto text-4xl text-yellow-400 mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
+            <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
+            <button
+              onClick={() => setActiveSection('inicio')}
+              className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none"
+          className="p-2 rounded-full bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 border border-gray-700/50"
         >
           <FiMenu className="text-xl" />
         </button>
       </div>
 
-      <aside
-        className={`fixed inset-y-0 left-0 transform ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-800 overflow-y-auto`}
-      >
+      <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}>
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
             <button
               onClick={() => setMenuOpen(false)}
-              className="md:hidden p-1 rounded-lg hover:bg-gray-700"
+              className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiClose className="text-lg" />
             </button>
           </div>
-          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-700 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold">
+          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50">
+            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
               {username.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -1364,57 +1429,43 @@ const DashboardProvider = () => {
           <nav className="flex-1 space-y-1">
             <button
               onClick={() => { setActiveSection("inicio"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "inicio" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "inicio" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiHome /> <span>Inicio</span>
             </button>
             <button
               onClick={() => { setActiveSection("inventario"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "inventario" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "inventario" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiBox /> <span>Inventario</span>
             </button>
             <button
               onClick={() => { setActiveSection("subirProducto"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "subirProducto" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "subirProducto" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiUpload /> <span>Subir Producto</span>
             </button>
             <button
               onClick={() => { setActiveSection("ganancias"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "ganancias" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "ganancias" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiDollarSign /> <span>Ganancias</span>
             </button>
             <button
               onClick={() => { setActiveSection("pedidos"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "pedidos" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "pedidos" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiShoppingCart /> <span>Pedidos</span>
             </button>
             <button
               onClick={() => { setActiveSection("retiros"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "retiros" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "retiros" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiCreditCard /> <span>Retiros</span>
             </button>
             <button
               onClick={() => { setActiveSection("configuracion"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "configuracion" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "configuracion" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
             >
               <FiSettings /> <span>Configuración</span>
             </button>
@@ -1422,7 +1473,7 @@ const DashboardProvider = () => {
           <div className="mt-auto pt-4">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiLogOut /> <span>Cerrar sesión</span>
             </button>
@@ -1430,46 +1481,46 @@ const DashboardProvider = () => {
         </div>
       </aside>
 
-      <main className="md:ml-64 p-4 pt-20 md:pt-4">
+      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">
         {renderContent()}
       </main>
 
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setMenuOpen(false)}
         ></div>
       )}
 
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-800/50">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">Editar Producto</h3>
                 <button
                   onClick={() => setEditModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-300"
+                  className="text-gray-400 hover:text-white transition-all duration-300"
                 >
-                  <FiX size={24} />
+                  <FiClose size={24} />
                 </button>
-              </div>
+                </div>
               {editError && (
-                <div className="bg-red-900 border-l-4 border-red-500 p-4 mb-6">
+                <div className="bg-red-900/80 border-l-4 border-red-500 p-4 mb-6 rounded-xl">
                   <div className="flex">
                     <FiAlertCircle className="h-5 w-5 text-red-400" />
                     <p className="ml-3 text-sm text-red-300">{editError}</p>
                   </div>
                 </div>
               )}
-              {selectedProduct && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-gray-300 mb-2">Imagen</label>
-                    <div className="flex items-center space-x-4">
-                      {selectedProduct.image && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="col-span-1">
+                    <label className="block text-gray-300 mb-2">Imagen del producto</label>
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600/50 border-dashed rounded-xl bg-gray-700/50 backdrop-blur-sm">
+                      {selectedProduct.image ? (
                         <div className="relative">
-                          <img src={selectedProduct.image} alt="Product" className="w-16 h-16 object-cover rounded" />
+                          <img src={selectedProduct.image} alt="Preview" className="mx-auto h-48 w-full object-contain" />
                           <button
                             type="button"
                             onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
@@ -1478,223 +1529,247 @@ const DashboardProvider = () => {
                             <FiX size={16} />
                           </button>
                         </div>
+                      ) : (
+                        <>
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 48 48"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <div className="flex text-sm text-gray-400 justify-center">
+                            <label
+                              htmlFor="edit-file-upload"
+                              className="relative cursor-pointer bg-gray-800/50 rounded-xl font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
+                            >
+                              <span>Subir una imagen</span>
+                              <input
+                                id="edit-file-upload"
+                                name="edit-file-upload"
+                                type="file"
+                                className="sr-only"
+                                onChange={(e) => handleFileChange(e, true)}
+                                accept="image/*"
+                              />
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500">PNG, JPG, GIF hasta 10MB</p>
+                        </>
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileChange(e, true)}
-                        className="text-sm text-gray-300"
-                      />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="col-span-1 space-y-4">
                     <div>
-                      <label className="block text-gray-300 mb-2">Nombre*</label>
+                      <label className="block text-gray-300 mb-2">Nombre del producto*</label>
                       <input
                         type="text"
+                        name="name"
                         value={selectedProduct.name}
                         onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                        placeholder="Ej: Netflix Premium 1 mes"
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Categoría*</label>
-                      <select
-                        value={selectedProduct.category}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      >
-                        <option value="Netflix">Netflix</option>
-                        <option value="Spotify">Spotify</option>
-                        <option value="Disney">Disney+</option>
-                        <option value="Max">Max</option>
-                        <option value="Prime Video">Prime Video</option>
-                        <option value="Vix">Vix</option>
-                        <option value="ChatGPT">ChatGPT</option>
-                        <option value="Crunchyroll">Crunchyroll</option>
-                        <option value="Redes Sociales">Redes Sociales</option>
-                        <option value="Otro">Otro</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-gray-300 mb-2">Precio (S/)*</label>
-                      <input
-                        type="number"
-                        value={selectedProduct.price}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Stock*</label>
-                      <input
-                        type="number"
-                        value={selectedProduct.stock}
-                        onChange={handleEditStockChange}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        min="1"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Estado*</label>
-                      <select
-                        value={selectedProduct.status}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      >
-                        <option value="En stock">En stock</option>
-                        <option value="A pedido">A pedido</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-gray-300 mb-2">Duración (días)</label>
-                      <input
-                        type="number"
-                        value={selectedProduct.duration}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        placeholder="Dejar vacío para ilimitado"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-300 mb-2">Teléfono de contacto {selectedProduct.status === "A pedido" ? "*" : ""}</label>
-                      <input
-                        type="text"
-                        value={selectedProduct.providerPhone}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                        placeholder="Ej: +51 987654321"
-                        required={selectedProduct.status === "A pedido"}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 mb-2">Detalles del producto</label>
-                    <textarea
-                      value={selectedProduct.details}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
-                      rows="3"
-                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      placeholder="Describe los detalles y características del producto"
-                    ></textarea>
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 mb-2">Términos y condiciones</label>
-                    <textarea
-                      value={selectedProduct.terms}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
-                      rows="3"
-                      className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      placeholder="Especifica los términos y condiciones de uso"
-                    ></textarea>
-                  </div>
-                  {selectedProduct.status === "En stock" && (
-                    <div>
-                      <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
-                      <p className="text-xs text-gray-400 mb-3">
-                        Debe completar todas las cuentas según el stock indicado
-                      </p>
-                      <div className="space-y-4">
-                        {selectedProduct.accounts.map((account, index) => (
-                          <div
-                            key={index}
-                            className="border border-gray-600 rounded-lg p-4 bg-gray-700"
-                          >
-                            <h4 className="text-sm font-medium text-white mb-3">
-                              Cuenta {index + 1}
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">
-                                  Correo electrónico*
-                                </label>
-                                <input
-                                  type="email"
-                                  value={account.email}
-                                  onChange={(e) =>
-                                    handleEditAccountFieldChange(index, "email", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">
-                                  Contraseña*
-                                </label>
-                                <input
-                                  type="text"
-                                  value={account.password}
-                                  onChange={(e) =>
-                                    handleEditAccountFieldChange(index, "password", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">
-                                  Perfil (opcional)
-                                </label>
-                                <input
-                                  type="text"
-                                  value={account.profile}
-                                  onChange={(e) =>
-                                    handleEditAccountFieldChange(index, "profile", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-600 bg-gray-800 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
-                                  placeholder="Ej: Perfil 1"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-gray-300 mb-2">Categoría*</label>
+                        <select
+                          name="category"
+                          value={selectedProduct.category}
+                          onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                        >
+                          <option value="Netflix">Netflix</option>
+                          <option value="Spotify">Spotify</option>
+                          <option value="Disney">Disney+</option>
+                          <option value="Max">Max</option>
+                          <option value="Prime Video">Prime Video</option>
+                          <option value="Vix">Vix</option>
+                          <option value="ChatGPT">ChatGPT</option>
+                          <option value="Crunchyroll">Crunchyroll</option>
+                          <option value="Redes Sociales">Redes Sociales</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-300 mb-2">Estado*</label>
+                        <select
+                          name="status"
+                          value={selectedProduct.status}
+                          onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                        >
+                          <option value="En stock">En stock</option>
+                          <option value="A pedido">A pedido</option>
+                        </select>
                       </div>
                     </div>
-                  )}
-                  <div className="flex justify-end gap-3 pt-4">
-                    <button
-                      onClick={() => setEditModalOpen(false)}
-                      className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleUpdateProduct}
-                      className="px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
-                    >
-                      Guardar Cambios
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-gray-300 mb-2">Precio (S/)*</label>
+                        <input
+                          type="number"
+                          name="price"
+                          value={selectedProduct.price}
+                          onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                          placeholder="Ej: 9.99"
+                          step="0.01"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-300 mb-2">Stock*</label>
+                        <input
+                          type="number"
+                          name="stock"
+                          value={selectedProduct.stock}
+                          onChange={handleEditStockChange}
+                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                          min="1"
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-300 mb-2">Duración (días)</label>
+                    <input
+                      type="number"
+                      name="duration"
+                      value={selectedProduct.duration}
+                      onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                      placeholder="Dejar vacío para ilimitado"
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-300 mb-2">Teléfono de contacto {selectedProduct.status === "A pedido" ? "*" : ""}</label>
+                    <input
+                      type="text"
+                      name="providerPhone"
+                      value={selectedProduct.providerPhone}
+                      onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                      placeholder="Ej: +51 987654321"
+                      required={selectedProduct.status === "A pedido"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-300 mb-2">Detalles del producto</label>
+                  <textarea
+                    name="details"
+                    value={selectedProduct.details}
+                    onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
+                    rows="3"
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                    placeholder="Describe los detalles y características del producto"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-gray-300 mb-2">Términos y condiciones</label>
+                  <textarea
+                    name="terms"
+                    value={selectedProduct.terms}
+                    onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
+                    rows="3"
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                    placeholder="Especifica los términos y condiciones de uso"
+                  ></textarea>
+                </div>
+                {selectedProduct.status === "En stock" && (
+                  <div>
+                    <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
+                    <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
+                    <div className="space-y-4">
+                      {selectedProduct.accounts.map((account, index) => (
+                        <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
+                          <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
+                              <input
+                                type="email"
+                                value={account.email}
+                                onChange={(e) => handleEditAccountFieldChange(index, "email", e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">Contraseña*</label>
+                              <input
+                                type="text"
+                                value={account.password}
+                                onChange={(e) => handleEditAccountFieldChange(index, "password", e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1">Perfil (opcional)</label>
+                              <input
+                                type="text"
+                                value={account.profile}
+                                onChange={(e) => handleEditAccountFieldChange(index, "profile", e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                                placeholder="Ej: Perfil 1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setEditModalOpen(false)}
+                    className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-xl hover:bg-gray-600/50 transition-all duration-300"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleUpdateProduct}
+                    className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
+                  >
+                    Actualizar Producto
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {successModal.open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-sm w-full">
-            <FiCheck className="mx-auto text-4xl text-green-500 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Éxito</h3>
-            <p className="text-gray-300 mb-4">{successModal.message}</p>
-            <button
-              onClick={() => setSuccessModal({ open: false, message: "" })}
-              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
-            >
-              Aceptar
-            </button>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-800/50">
+            <div className="text-center">
+              <FiCheck className="mx-auto text-4xl text-green-400 mb-4" />
+              <h3 className="text-xl font-bold text-white mb-2">¡Éxito!</h3>
+              <p className="text-gray-300 mb-4">{successModal.message}</p>
+              <button
+                onClick={() => setSuccessModal({ open: false, message: "" })}
+                className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
+              >
+                Aceptar
+              </button>
+            </div>
           </div>
         </div>
       )}

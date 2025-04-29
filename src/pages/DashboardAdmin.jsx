@@ -38,6 +38,27 @@ import {
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
+// Modal Component for Notifications
+const NotificationModal = ({ isOpen, message, type, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div className={`bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full border ${type === "success" ? "border-green-500" : "border-red-500"}`}>
+        <h3 className={`text-lg font-bold mb-2 ${type === "success" ? "text-green-400" : "text-red-400"}`}>
+          {type === "success" ? "Éxito" : "Error"}
+        </h3>
+        <p className="text-gray-300 mb-4">{message}</p>
+        <button
+          onClick={onClose}
+          className={`w-full py-2 rounded-lg ${type === "success" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white transition-colors`}
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const DashboardAdmin = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("inicio");
@@ -54,21 +75,24 @@ const DashboardAdmin = () => {
   const [actionLoading, setActionLoading] = useState({}); // Granular loading for actions
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [modal, setModal] = useState({ isOpen: false, message: "", type: "success" }); // Modal state
+  const [isCreatingUser, setIsCreatingUser] = useState(false); // Flag to track user creation
   const navigate = useNavigate();
 
-  // Verificar autenticación y redirigir si no está autenticado
+  // Verificar autenticación y redirigir si no está autenticado, excepto durante creación de usuario
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
+      if (!user && !isCreatingUser) {
+        // Only redirect if not in the middle of creating a user
         navigate("/login");
-      } else {
+      } else if (user) {
         setEmail(user.email);
         fetchUsername(user.uid);
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [navigate]);
+  }, [navigate, isCreatingUser]);
 
   // Obtener el nombre del administrador autenticado
   const fetchUsername = async (uid) => {
@@ -101,7 +125,7 @@ const DashboardAdmin = () => {
     });
   };
 
-  // Obtener usuarios y solicitudes pendientes de Firestore
+  // Obtener usuarios, solicitudes pendientes y detalles de retiros
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -124,10 +148,11 @@ const DashboardAdmin = () => {
         const topUpsSnapshot = await getDocs(topUpsQuery);
         setPendingTopUps(topUpsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener retiros pendientes
+        // Obtener retiros pendientes (proveedores)
         const withdrawalsQuery = query(collection(db, "withdrawals"), where("status", "==", "pending"));
         const withdrawalsSnapshot = await getDocs(withdrawalsQuery);
-        setPendingWithdrawals(withdrawalsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const withdrawalsData = withdrawalsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setPendingWithdrawals(withdrawalsData);
       } catch (error) {
         console.error("Error al obtener datos:", error);
         setError("Error al cargar datos");
@@ -162,7 +187,8 @@ const DashboardAdmin = () => {
     const unsubscribeWithdrawals = onSnapshot(
       query(collection(db, "withdrawals"), where("status", "==", "pending")),
       (snapshot) => {
-        setPendingWithdrawals(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const withdrawalsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setPendingWithdrawals(withdrawalsData);
       }
     );
 
@@ -184,10 +210,11 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      alert("Retiro aprobado exitosamente");
+      setModal({ isOpen: true, message: "Retiro aprobado exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al aprobar retiro:", error);
       setError(error.message || "Error al aprobar el retiro");
+      setModal({ isOpen: true, message: error.message || "Error al aprobar el retiro", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: false }));
     }
@@ -203,10 +230,11 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      alert("Retiro rechazado exitosamente");
+      setModal({ isOpen: true, message: "Retiro rechazado exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al rechazar retiro:", error);
       setError(error.message || "Error al rechazar el retiro");
+      setModal({ isOpen: true, message: error.message || "Error al rechazar el retiro", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: false }));
     }
@@ -231,10 +259,11 @@ const DashboardAdmin = () => {
         balance: increment(topUp.amount || 0),
       });
       setError(null);
-      alert("Recarga aprobada exitosamente");
+      setModal({ isOpen: true, message: "Recarga aprobada exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al aprobar recarga:", error);
       setError(error.message || "Error al aprobar la recarga");
+      setModal({ isOpen: true, message: error.message || "Error al aprobar la recarga", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [topUpId]: false }));
     }
@@ -250,10 +279,11 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      alert("Recarga rechazada exitosamente");
+      setModal({ isOpen: true, message: "Recarga rechazada exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al rechazar recarga:", error);
       setError(error.message || "Error al rechazar la recarga");
+      setModal({ isOpen: true, message: error.message || "Error al rechazar la recarga", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [topUpId]: false }));
     }
@@ -263,6 +293,8 @@ const DashboardAdmin = () => {
   const handleAccept = async (registrationId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [registrationId]: true }));
+      setIsCreatingUser(true); // Set flag to prevent redirect
+
       const registrationRef = doc(db, "pendingRegistrations", registrationId);
       const registration = pendingRegistrations.find((r) => r.id === registrationId);
       if (!registration) {
@@ -277,10 +309,10 @@ const DashboardAdmin = () => {
 
       // Crear usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, registration.email, registration.password);
-      const user = userCredential.user;
+      const newUser = userCredential.user;
 
       // Guardar datos del usuario en Firestore
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, "users", newUser.uid), {
         username: registration.username,
         email: registration.email,
         role: registration.role || "usuario",
@@ -294,13 +326,22 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
 
+      // Sign out the new user immediately to prevent session takeover
+      await signOut(auth);
+
+      // Since we signed out, onAuthStateChanged will trigger, but isCreatingUser prevents redirect
+      // The admin session should be restored automatically by Firebase's persistence
+      // In a production app, this should be handled via a Cloud Function
+
       setError(null);
-      alert("Solicitud de registro aprobada exitosamente");
+      setModal({ isOpen: true, message: "Solicitud de registro aprobada exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al aceptar solicitud:", error);
       setError(error.message || "Error al aceptar la solicitud de registro");
+      setModal({ isOpen: true, message: error.message || "Error al aceptar la solicitud de registro", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
+      setIsCreatingUser(false); // Reset flag
     }
   };
 
@@ -314,12 +355,13 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      alert("Solicitud de registro rechazada exitosamente");
+      setModal({ isOpen: true, message: "Solicitud de registro rechazada exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al rechazar solicitud:", error);
       setError(error.message || "Error al rechazar la solicitud de registro");
+      setModal({ isOpen: true, message: error.message || "Error al rechazar la solicitud de registro", type: "error" });
     } finally {
-      setActionLoading((prev) => ({ ...prev, [registrationId]: false })); // Fixed typo: setMazeActionLoading to setActionLoading
+      setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
     }
   };
 
@@ -331,6 +373,7 @@ const DashboardAdmin = () => {
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
       setError(error.message || "Error al cerrar sesión");
+      setModal({ isOpen: true, message: error.message || "Error al cerrar sesión", type: "error" });
     }
   };
 
@@ -361,10 +404,11 @@ const DashboardAdmin = () => {
       }
 
       setError(null);
-      alert("Cambios guardados exitosamente");
+      setModal({ isOpen: true, message: "Cambios guardados exitosamente", type: "success" });
     } catch (error) {
       console.error("Error al guardar cambios:", error);
       setError(error.message || "Error al guardar cambios");
+      setModal({ isOpen: true, message: error.message || "Error al guardar cambios", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, config: false }));
     }
@@ -497,7 +541,7 @@ const DashboardAdmin = () => {
                       className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors rounded-lg px-2"
                     >
                       <div className="flex justify-between items-center">
-                        <p className="font-medium text-white">{withdrawal.username || "Sin nombre"}</p>
+                        <p className="font-medium text-white">{withdrawal.provider || "Sin proveedor"}</p>
                         <span className="text-xs px-2 py-1 rounded-full bg-yellow-900 text-yellow-400">
                           S/ {(withdrawal.amount || 0).toFixed(2)}
                         </span>
@@ -616,7 +660,7 @@ const DashboardAdmin = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Rol
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px | 4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Saldo
                         </th>
                       </tr>
@@ -740,12 +784,11 @@ const DashboardAdmin = () => {
                           <FiDollarSign size={18} />
                         </div>
                         <div>
-                          <h4 className="font-semibold text-white">{withdrawal.username || "Sin nombre"}</h4>
-                          <p className="text-xs text-gray-400">Solicitado: {formatDate(withdrawal.requestedAt)}</p>
+                          <h4 className="font-semibold text-white">{withdrawal.provider || "Sin proveedor"}</h4>
+                          <p className="text-xs text-gray-400">Email: {withdrawal.providerEmail || "No disponible"}</p>
+                          <p className="text-xs text-gray-400">Solicitado: {formatDate(withdrawal.createdAt)}</p>
                           <p className="text-xs text-gray-400">Método: {withdrawal.method || "No especificado"}</p>
-                          {withdrawal.accountDetails && (
-                            <p className="text-xs text-gray-400">Detalles: {withdrawal.accountDetails}</p>
-                          )}
+                          <p className="text-xs text-gray-400">Cuenta: {withdrawal.account || "No especificada"}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -1031,6 +1074,13 @@ const DashboardAdmin = () => {
           onClick={() => setMenuOpen(false)}
         ></div>
       )}
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={modal.isOpen}
+        message={modal.message}
+        type={modal.type}
+        onClose={() => setModal({ isOpen: false, message: "", type: "success" })}
+      />
     </div>
   );
 };

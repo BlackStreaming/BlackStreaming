@@ -37,7 +37,7 @@ import Deezer from "./categorías/Deezer";
 import Tidal from "./categorías/Tidal";
 import Vpn from "./categorías/Vpn";
 import WinTv from "./categorías/WinTv";
-import BuscaPersonas from "./categorías/BuscaPersonas";
+import BuscaPersonas from "./categorías/Buscapersonas";
 import Maintenance from "./pages/Maintenance"; // Nueva página de mantenimiento
 
 const App = () => {

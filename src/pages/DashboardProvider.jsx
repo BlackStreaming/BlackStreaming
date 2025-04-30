@@ -855,7 +855,7 @@ const DashboardProvider = () => {
                         <option value="Licencias">Licencias</option>
                         <option value="Capcut">Capcut</option>
                         <option value="Duolingo">Duolingo</option>
-                        <option value="BuscaPersonas">Buscapersonas</option>
+                        <option value="BuscaPersonas">BuscaPersonas</option>
                       </select>
                     </div>
                     <div>
@@ -1655,7 +1655,7 @@ const DashboardProvider = () => {
                             <option value="Licencias">Licencias</option>
                             <option value="Capcut">Capcut</option>
                             <option value="Duolingo">Duolingo</option>
-                            <option value="BuscaPersonas">Buscapersonas</option>
+                            <option value="BuscaPersonas">BuscaPersonas</option>
                         </select>
                       </div>
                       <div>

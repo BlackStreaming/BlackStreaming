@@ -28,10 +28,29 @@ import disneyLogo from "../catalogo/disney.png";
 import maxLogo from "../catalogo/max.png";
 import primeVideoLogo from "../catalogo/prime-video.png";
 import vixLogo from "../catalogo/vix.png";
-import CanvaLogo from "../catalogo/Canva.png";
-import ChatGPTlOGO from "../catalogo/ChatGPT.png";
-import CrunchyrollLogo from "../catalogo/crunchyroll.png";
-import RedesSocialesLogo from "../catalogo/redessociales.png";
+import canvaLogo from "../catalogo/Canva.png";
+import chatGPTLogo from "../catalogo/ChatGPT.png";
+import crunchyrollLogo from "../catalogo/crunchyroll.png";
+import redesSocialesLogo from "../catalogo/redessociales.png";
+import dgoLogo from "../catalogo/dgo.png";
+import ligaMaxLogo from "../catalogo/ligamax.png";
+import movistarPlayLogo from "../catalogo/movistarplay.png";
+import youtubeLogo from "../catalogo/youtube.png";
+import deezerLogo from "../catalogo/deezer.png";
+import tidalLogo from "../catalogo/tidal.png";
+import vpnLogo from "../catalogo/vpn.png";
+import winTvLogo from "../catalogo/wintv.png";
+import appleMusicLogo from "../catalogo/applemusic.png";
+import appleTvLogo from "../catalogo/appletv.png";
+import iptvLogo from "../catalogo/iptv.png";
+import flujoTvLogo from "../catalogo/flujotv.png";
+import vikiRakutenLogo from "../catalogo/vikirakuten.png";
+import pornhubLogo from "../catalogo/pornhub.png";
+import paramountLogo from "../catalogo/paramount.png";
+import licenciasLogo from "../catalogo/licencias.png";
+import capcutLogo from "../catalogo/capcut.png";
+import duolingoLogo from "../catalogo/duolingo.png";
+import buscaPersonasLogo from "../catalogo/buscapersonas.png";
 
 const featuredContent = [
   { src: brooklyn99, title: "Brooklyn Nine-Nine" },
@@ -48,10 +67,29 @@ const platforms = [
   { name: "Max", logo: maxLogo, route: "/max" },
   { name: "Prime Video", logo: primeVideoLogo, route: "/primevideo" },
   { name: "Vix", logo: vixLogo, route: "/vix" },
-  { name: "Canva", logo: CanvaLogo, route: "/Canva" },
-  { name: "ChatGPT", logo: ChatGPTlOGO, route: "/ChatGPT" },
-  { name: "Crunchyroll", logo: CrunchyrollLogo, route: "/crunchyroll" },
-  { name: "Redes Sociales", logo: RedesSocialesLogo, route: "/redessociales" },
+  { name: "Canva", logo: canvaLogo, route: "/canva" },
+  { name: "ChatGPT", logo: chatGPTLogo, route: "/chatgpt" },
+  { name: "Crunchyroll", logo: crunchyrollLogo, route: "/crunchyroll" },
+  { name: "Redes Sociales", logo: redesSocialesLogo, route: "/redessociales" },
+  { name: "Dgo", logo: dgoLogo, route: "/dgo" },
+  { name: "Liga Max", logo: ligaMaxLogo, route: "/ligamax" },
+  { name: "Movistar Play", logo: movistarPlayLogo, route: "/movistarplay" },
+  { name: "Youtube", logo: youtubeLogo, route: "/youtube" },
+  { name: "Deezer", logo: deezerLogo, route: "/deezer" },
+  { name: "Tidal", logo: tidalLogo, route: "/tidal" },
+  { name: "Vpn", logo: vpnLogo, route: "/vpn" },
+  { name: "Win Tv", logo: winTvLogo, route: "/wintv" },
+  { name: "Apple Music", logo: appleMusicLogo, route: "/applemusic" },
+  { name: "Apple Tv", logo: appleTvLogo, route: "/appletv" },
+  { name: "Iptv", logo: iptvLogo, route: "/iptv" },
+  { name: "Flujo Tv", logo: flujoTvLogo, route: "/flujotv" },
+  { name: "Viki Rakuten", logo: vikiRakutenLogo, route: "/vikirakuten" },
+  { name: "Pornhub", logo: pornhubLogo, route: "/pornhub" },
+  { name: "Paramount", logo: paramountLogo, route: "/paramount" },
+  { name: "Licencias", logo: licenciasLogo, route: "/licencias" },
+  { name: "Capcut", logo: capcutLogo, route: "/capcut" },
+  { name: "Duolingo", logo: duolingoLogo, route: "/duolingo" },
+  { name: "Busca Personas", logo: buscaPersonasLogo, route: "/buscapersonas" },
 ];
 
 const Home = () => {
@@ -99,7 +137,8 @@ const Home = () => {
   }, [auth.currentUser]);
 
   const handleLogout = () => {
-    auth.signOut()
+    auth
+      .signOut()
       .then(() => {
         setUser(null);
         navigate("/login");

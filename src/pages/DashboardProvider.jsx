@@ -83,12 +83,32 @@ const DashboardProvider = () => {
       max: "Max",
       primevideo: "Prime Video",
       vix: "Vix",
-      chatgpt: "ChatGPT",
       crunchyroll: "Crunchyroll",
+      canva: "Canva",
+      chatgpt: "ChatGPT",
       redessociales: "Redes Sociales",
+      dgo: "DGO",
+      ligamax: "Liga MX",
+      movistarplay: "Movistar Play",
+      youtube: "YouTube",
+      deezer: "Deezer",
+      tidal: "Tidal",
+      vpn: "VPN",
+      wintv: "WinTV",
+      applemusic: "Apple Music",
+      appletv: "Apple TV",
+      iptv: "IPTV",
+      flujotv: "Flujo TV",
+      vikirakuten: "Viki Rakuten",
+      pornhub: "Pornhub",
+      paramount: "Paramount",
+      licencias: "Licencias",
+      capcut: "Capcut",
+      duolingo: "Duolingo",
+      buscapersonas: "Buscapersonas"
     };
     return categoryMap[type?.toLowerCase()] || "Otro";
-  };
+};
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -809,14 +829,33 @@ const DashboardProvider = () => {
                       >
                         <option value="Netflix">Netflix</option>
                         <option value="Spotify">Spotify</option>
-                        <option value="Disney">Disney+</option>
+                        <option value="Disney+">Disney+</option>
                         <option value="Max">Max</option>
                         <option value="Prime Video">Prime Video</option>
                         <option value="Vix">Vix</option>
-                        <option value="ChatGPT">ChatGPT</option>
                         <option value="Crunchyroll">Crunchyroll</option>
+                        <option value="Canva">Canva</option>
+                        <option value="ChatGPT">ChatGPT</option>
                         <option value="Redes Sociales">Redes Sociales</option>
-                        <option value="Otro">Otro</option>
+                        <option value="DGO">DGO</option>
+                        <option value="Liga MX">Liga MX</option>
+                        <option value="Movistar Play">Movistar Play</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Deezer">Deezer</option>
+                        <option value="Tidal">Tidal</option>
+                        <option value="VPN">VPN</option>
+                        <option value="WinTV">WinTV</option>
+                        <option value="Apple Music">Apple Music</option>
+                        <option value="Apple TV">Apple TV</option>
+                        <option value="IPTV">IPTV</option>
+                        <option value="Flujo TV">Flujo TV</option>
+                        <option value="Viki Rakuten">Viki Rakuten</option>
+                        <option value="Pornhub">Pornhub</option>
+                        <option value="Paramount">Paramount</option>
+                        <option value="Licencias">Licencias</option>
+                        <option value="Capcut">Capcut</option>
+                        <option value="Duolingo">Duolingo</option>
+                        <option value="Buscapersonas">Buscapersonas</option>
                       </select>
                     </div>
                     <div>
@@ -1589,15 +1628,34 @@ const DashboardProvider = () => {
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         >
                           <option value="Netflix">Netflix</option>
-                          <option value="Spotify">Spotify</option>
-                          <option value="Disney">Disney+</option>
-                          <option value="Max">Max</option>
-                          <option value="Prime Video">Prime Video</option>
-                          <option value="Vix">Vix</option>
-                          <option value="ChatGPT">ChatGPT</option>
-                          <option value="Crunchyroll">Crunchyroll</option>
-                          <option value="Redes Sociales">Redes Sociales</option>
-                          <option value="Otro">Otro</option>
+                            <option value="Spotify">Spotify</option>
+                            <option value="Disney+">Disney+</option>
+                            <option value="Max">Max</option>
+                            <option value="Prime Video">Prime Video</option>
+                            <option value="Vix">Vix</option>
+                            <option value="Crunchyroll">Crunchyroll</option>
+                            <option value="Canva">Canva</option>
+                            <option value="ChatGPT">ChatGPT</option>
+                            <option value="Redes Sociales">Redes Sociales</option>
+                            <option value="DGO">DGO</option>
+                            <option value="Liga MX">Liga MX</option>
+                            <option value="Movistar Play">Movistar Play</option>
+                            <option value="YouTube">YouTube</option>
+                            <option value="Deezer">Deezer</option>
+                            <option value="Tidal">Tidal</option>
+                            <option value="VPN">VPN</option>
+                            <option value="WinTV">WinTV</option>
+                            <option value="Apple Music">Apple Music</option>
+                            <option value="Apple TV">Apple TV</option>
+                            <option value="IPTV">IPTV</option>
+                            <option value="Flujo TV">Flujo TV</option>
+                            <option value="Viki Rakuten">Viki Rakuten</option>
+                            <option value="Pornhub">Pornhub</option>
+                            <option value="Paramount">Paramount</option>
+                            <option value="Licencias">Licencias</option>
+                            <option value="Capcut">Capcut</option>
+                            <option value="Duolingo">Duolingo</option>
+                            <option value="Buscapersonas">Buscapersonas</option>
                         </select>
                       </div>
                       <div>

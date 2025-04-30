@@ -843,7 +843,7 @@ const DashboardProvider = () => {
                         <option value="YouTube">YouTube</option>
                         <option value="Deezer">Deezer</option>
                         <option value="Tidal">Tidal</option>
-                        <option value="VPN">VPN</option>
+                        <option value="Vpn">VPN</option>
                         <option value="WinTv">WinTV</option>
                         <option value="Apple Music">Apple Music</option>
                         <option value="Apple Tv">Apple TV</option>

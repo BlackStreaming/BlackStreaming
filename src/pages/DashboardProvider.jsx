@@ -87,25 +87,25 @@ const DashboardProvider = () => {
       canva: "Canva",
       chatgpt: "ChatGPT",
       redessociales: "Redes Sociales",
-      dgo: "DGO",
-      ligamax: "Liga MX",
+      dgo: "Dgo",
+      ligamax: "Liga Max",
       movistarplay: "Movistar Play",
-      youtube: "YouTube",
+      youtube: "Youtube",
       deezer: "Deezer",
       tidal: "Tidal",
-      vpn: "VPN",
-      wintv: "WinTV",
+      vpn: "Vpn",
+      wintv: "WinTv",
       applemusic: "Apple Music",
       appletv: "Apple TV",
-      iptv: "IPTV",
-      flujotv: "Flujo TV",
+      iptv: "Iptv",
+      flujotv: "Flujo Tv",
       vikirakuten: "Viki Rakuten",
       pornhub: "Pornhub",
       paramount: "Paramount",
       licencias: "Licencias",
       capcut: "Capcut",
       duolingo: "Duolingo",
-      buscapersonas: "Buscapersonas"
+      buscapersonas: "BuscaPersonas"
     };
     return categoryMap[type?.toLowerCase()] || "Otro";
 };

@@ -38,7 +38,7 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import logo from "../images/logo.png";
 
-const RedesSociales = () => {
+const Deezer = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -126,7 +126,7 @@ const RedesSociales = () => {
   useEffect(() => {
     const productsQuery = query(
       collection(db, "products"),
-      where("category", "==", "Redes Sociales")
+      where("category", "==", "Deezer")
     );
     const productsUnsubscribe = onSnapshot(
       productsQuery,
@@ -184,17 +184,17 @@ const RedesSociales = () => {
         setProducts(productsWithProviders);
         setProductsCount((prev) => ({
           ...prev,
-          redessociales: productsWithProviders.length,
+          deezer: productsWithProviders.length,
         }));
       },
       (err) => {
-        setError("Error al cargar productos de Redes Sociales");
+        setError("Error al cargar productos de Deezer");
         console.error(err);
       }
     );
 
     const accountsQuery = query(
-      collection(db, "redessociales_accounts"),
+      collection(db, "deezer_accounts"),
       where("status", "==", "available")
     );
     const accountsUnsubscribe = onSnapshot(
@@ -399,7 +399,7 @@ const RedesSociales = () => {
               profile: accountData.profile || "No proporcionado",
             },
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "deezer",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -484,7 +484,7 @@ const RedesSociales = () => {
             createdAt: new Date().toISOString(),
             accountDetails: null,
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "deezer",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -590,7 +590,7 @@ const RedesSociales = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Redes Sociales`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Deezer`);
     }
   };
 
@@ -628,8 +628,8 @@ const RedesSociales = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
-        <FiLoader className="animate-spin text-5xl text-cyan-400 mb-4" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-purple-950 text-gray-200">
+        <FiLoader className="animate-spin text-5xl text-purple-400 mb-4" />
         <p className="text-lg font-medium text-gray-300">Cargando...</p>
       </div>
     );
@@ -637,13 +637,13 @@ const RedesSociales = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 p-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-purple-950 p-4">
         <FiAlertCircle className="text-5xl text-red-400 mb-4" />
         <p className="text-xl font-semibold text-white mb-2">Error</p>
         <p className="text-gray-300 mb-6 text-center max-w-md">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-cyan-500 text-white rounded-full hover:bg-cyan-600 transition-all shadow-lg"
+          className="px-6 py-2 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-all shadow-lg"
         >
           Recargar
         </button>
@@ -652,7 +652,7 @@ const RedesSociales = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-purple-950 text-gray-200 flex flex-col">
       <header className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between flex-wrap">
           <div className="flex items-center space-x-3">
@@ -664,7 +664,7 @@ const RedesSociales = () => {
             </button>
             <Link to="/" className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-10 w-auto" />
-              <span className="text-xl font-semibold text-cyan-400 hidden sm:block">
+              <span className="text-xl font-semibold text-purple-400 hidden sm:block">
                 BlackStreaming
               </span>
             </Link>
@@ -673,14 +673,14 @@ const RedesSociales = () => {
           <div className="flex items-center relative w-full sm:w-auto sm:max-w-xs md:max-w-md mt-3 sm:mt-0 order-3 sm:order-2 sm:mx-3">
             <input
               type="text"
-              placeholder="Buscar en Redes Sociales..."
-              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+              placeholder="Buscar en Deezer..."
+              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               onClick={handleSearch}
-              className="absolute right-3 text-gray-400 hover:text-cyan-400 transition-all"
+              className="absolute right-3 text-gray-400 hover:text-purple-400 transition-all"
             >
               <FiSearch size={20} />
             </button>
@@ -690,7 +690,7 @@ const RedesSociales = () => {
             {user ? (
               <div className="flex items-center space-x-2 md:space-x-4">
                 <span className="text-sm font-medium text-gray-300 hidden sm:flex items-center">
-                  <FiUser className="mr-2 text-cyan-400" /> {user.name}
+                  <FiUser className="mr-2 text-purple-400" /> {user.name}
                 </span>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-200 bg-gray-800/50 px-3 py-1 rounded-full">
@@ -701,7 +701,7 @@ const RedesSociales = () => {
                     className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 transition-all"
                     title="Dashboard"
                   >
-                    <FiUser className="text-cyan-400" size={20} />
+                    <FiUser className="text-purple-400" size={20} />
                   </button>
                   <button
                     onClick={() => {
@@ -719,13 +719,13 @@ const RedesSociales = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-4 py-2 text-sm text-gray-200 hover:text-cyan-400 transition-all"
+                  className="px-4 py-2 text-sm text-gray-200 hover:text-purple-400 transition-all"
                 >
                   Ingresar
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="px-4 py-2 rounded-full bg-cyan-500 text-white hover:bg-cyan-600 transition-all text-sm"
+                  className="px-4 py-2 rounded-full bg-purple-500 text-white hover:bg-purple-600 transition-all text-sm"
                 >
                   Registrarse
                 </button>
@@ -743,7 +743,7 @@ const RedesSociales = () => {
         >
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center p-4 md:hidden">
-              <span className="text-xl font-semibold text-cyan-400">
+              <span className="text-xl font-semibold text-purple-400">
                 BlackStreaming
               </span>
               <button
@@ -792,9 +792,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/max"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text
-
--gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiVideo className="text-purple-400" />
@@ -866,7 +864,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/redessociales"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiGlobe className="text-pink-400" />
@@ -926,7 +924,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/deezer"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-purple-600/30 text-white border border-purple-500/30"
               >
                 <div className="flex items-center space-x-2">
                   <FiMusic className="text-purple-500" />
@@ -1108,7 +1106,7 @@ const RedesSociales = () => {
             {user && (
               <div className="p-4 border-t border-gray-800/50">
                 <div className="flex items-center space-x-3 p-3 bg-gray-800/50 rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-cyan-500/30 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/30 flex items-center justify-center text-white font-bold text-lg">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -1130,16 +1128,16 @@ const RedesSociales = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1511671786164-2bd9ebeb2088?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-purple-900/50"></div>
             <div className="relative z-10 text-center px-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
-                Cuentas Premium de Redes Sociales
+                Cuentas Premium de Deezer
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Accede a funciones premium en tus redes sociales favoritas
+                Disfruta de tu música favorita sin límites con nuestras cuentas premium de Deezer
               </p>
             </div>
           </section>
@@ -1151,7 +1149,7 @@ const RedesSociales = () => {
               </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
-                className="text-sm sm:text-base text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
+                className="text-sm sm:text-base text-purple-400 hover:text-purple-300 transition-all underline underline-offset-4"
               >
                 Términos Generales
               </button>
@@ -1232,7 +1230,7 @@ const RedesSociales = () => {
                         }
                         className={`w-full py-3 rounded-full flex items-center justify-center transition-all text-white font-medium text-sm ${
                           product.status === "A pedido" || product.stock > 0
-                            ? "bg-cyan-500 hover:bg-cyan-600"
+                            ? "bg-purple-500 hover:bg-purple-600"
                             : "bg-red-600/50 cursor-not-allowed"
                         }`}
                       >
@@ -1304,7 +1302,7 @@ const RedesSociales = () => {
                         customerName: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 text-white transition-all"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-white transition-all"
                     required
                   />
                 </div>
@@ -1321,7 +1319,7 @@ const RedesSociales = () => {
                         phoneNumber: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 text-white transition-all"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-white transition-all"
                     placeholder="Ej. 999888777"
                     required
                   />
@@ -1330,7 +1328,7 @@ const RedesSociales = () => {
                   <input
                     type="checkbox"
                     id="termsCheck"
-                    className="mt-1 mr-3 bg-gray-700 border-gray-600 text-cyan-400 focus:ring-cyan-400 rounded"
+                    className="mt-1 mr-3 bg-gray-700 border-gray-600 text-purple-400 focus:ring-purple-400 rounded"
                     required
                   />
                   <label htmlFor="termsCheck" className="text-sm text-gray-300">
@@ -1338,7 +1336,7 @@ const RedesSociales = () => {
                     <button
                       type="button"
                       onClick={() => setTermsModal(true)}
-                      className="text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
+                      className="text-purple-400 hover:text-purple-300 transition-all underline underline-offset-4"
                     >
                       Términos
                     </button>{" "}
@@ -1346,7 +1344,7 @@ const RedesSociales = () => {
                     <button
                       type="button"
                       onClick={() => setGeneralTermsModal(true)}
-                      className="text-cyan-400 hover:text-cyan-300 transition-all underline underline-offset-4"
+                      className="text-purple-400 hover:text-purple-300 transition-all underline underline-offset-4"
                     >
                       Condiciones Generales
                     </button>
@@ -1363,7 +1361,7 @@ const RedesSociales = () => {
                 <button
                   onClick={finalizePurchase}
                   disabled={loading}
-                  className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 disabled:bg-gray-700/50 disabled:text-gray-400 flex items-center transition-all"
+                  className="px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:bg-gray-700/50 disabled:text-gray-400 flex items-center transition-all"
                 >
                   {loading && <FiLoader className="animate-spin mr-2" />}
                   <span>
@@ -1408,7 +1406,7 @@ const RedesSociales = () => {
                   }
                   setNotificationModal(null);
                 }}
-                className="w-full py-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all"
+                className="w-full py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all"
               >
                 Aceptar
               </button>
@@ -1577,7 +1575,7 @@ const RedesSociales = () => {
               </div>
               <button
                 onClick={() => setGeneralTermsModal(false)}
-                className="w-full mt-6 py-3 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all"
+                className="w-full mt-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all"
               >
                 Cerrar
               </button>
@@ -1591,7 +1589,7 @@ const RedesSociales = () => {
           <div className="flex flex-col items-center space-y-4 md:flex-row md:justify-between md:space-y-0">
             <div className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-8 w-auto" />
-              <span className="text-sm font-semibold text-cyan-400">
+              <span className="text-sm font-semibold text-purple-400">
                 BlackStreaming
               </span>
             </div>
@@ -1609,4 +1607,4 @@ const RedesSociales = () => {
   );
 };
 
-export default RedesSociales;
+export default Deezer;

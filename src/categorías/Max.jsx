@@ -62,6 +62,25 @@ const Max = () => {
     canva: 0,
     chatgpt: 0,
     redessociales: 0,
+    dgo: 0,
+    ligamax: 0,
+    movistarplay: 0,
+    youtube: 0,
+    deezer: 0,
+    tidal: 0,
+    vpn: 0,
+    wintv: 0,
+    applemusic: 0,
+    appletv: 0,
+    iptv: 0,
+    flujotv: 0,
+    vikirakuten: 0,
+    pornhub: 0,
+    paramount: 0,
+    licencias: 0,
+    capcut: 0,
+    duolingo: 0,
+    buscapersonas: 0,
   });
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
@@ -198,12 +217,32 @@ const Max = () => {
       "Netflix",
       "Spotify",
       "Disney",
+      "Max",
       "Prime Video",
       "Vix",
       "Crunchyroll",
       "Canva",
       "ChatGPT",
       "Redes Sociales",
+      "Dgo",
+      "Liga Max",
+      "Movistar Play",
+      "Youtube",
+      "Deezer",
+      "Tidal",
+      "Vpn",
+      "Win Tv",
+      "Apple Music",
+      "Apple Tv",
+      "Iptv",
+      "Flujo Tv",
+      "Viki Rakuten",
+      "Pornhub",
+      "Paramount",
+      "Licencias",
+      "Capcut",
+      "Duolingo",
+      "Busca Personas",
     ];
 
     const unsubscribes = categories.map((category) => {
@@ -562,22 +601,28 @@ const Max = () => {
   const renderProductStatus = (product) => {
     if (product.status === "A pedido") {
       return (
-        <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/50">
-          A pedido
-        </span>
+        <div className="absolute top-0 left-0 w-32 h-10 bg-yellow-500 text-white flex items-center justify-center transform -rotate-45 -translate-x-8 translate-y-4 shadow-md rounded-br-lg">
+          <span className="text-xs font-bold uppercase tracking-wider">
+            A pedido
+          </span>
+        </div>
       );
     }
     if (product.stock > 0) {
       return (
-        <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/50">
-          Disponibles: {product.stock}
-        </span>
+        <div className="absolute top-0 left-0 w-32 h-10 bg-green-500 text-white flex items-center justify-center transform -rotate-45 -translate-x-8 translate-y-4 shadow-md rounded-br-lg">
+          <span className="text-xs font-bold uppercase tracking-wider">
+            En stock: {product.stock}
+          </span>
+        </div>
       );
     }
     return (
-      <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/50">
-        Agotado
-      </span>
+      <div className="absolute top-0 left-0 w-32 h-10 bg-red-500 text-white flex items-center justify-center transform -rotate-45 -translate-x-8 translate-y-4 shadow-md rounded-br-lg">
+        <span className="text-xs font-bold uppercase tracking-wider">
+          Agotado
+        </span>
+      </div>
     );
   };
 
@@ -829,6 +874,234 @@ const Max = () => {
                   {productsCount.redessociales}
                 </span>
               </Link>
+              <Link
+                to="/dgo"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-blue-600" />
+                  <span>Dgo</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.dgo}
+                </span>
+              </Link>
+              <Link
+                to="/ligamax"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiPlayCircle className="text-green-600" />
+                  <span>Liga Max</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.ligamax}
+                </span>
+              </Link>
+              <Link
+                to="/movistarplay"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-blue-500" />
+                  <span>Movistar Play</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.movistarplay}
+                </span>
+              </Link>
+              <Link
+                to="/youtube"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiVideo className="text-red-600" />
+                  <span>Youtube</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.youtube}
+                </span>
+              </Link>
+              <Link
+                to="/deezer"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiMusic className="text-purple-500" />
+                  <span>Deezer</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.deezer}
+                </span>
+              </Link>
+              <Link
+                to="/tidal"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiMusic className="text-black" />
+                  <span>Tidal</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.tidal}
+                </span>
+              </Link>
+              <Link
+                to="/vpn"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiGlobe className="text-gray-500" />
+                  <span>Vpn</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.vpn}
+                </span>
+              </Link>
+              <Link
+                to="/wintv"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-orange-500" />
+                  <span>Win Tv</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.wintv}
+                </span>
+              </Link>
+              <Link
+                to="/applemusic"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiMusic className="text-gray-600" />
+                  <span>Apple Music</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.applemusic}
+                </span>
+              </Link>
+              <Link
+                to="/appletv"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-gray-700" />
+                  <span>Apple Tv</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.appletv}
+                </span>
+              </Link>
+              <Link
+                to="/iptv"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-blue-700" />
+                  <span>Iptv</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.iptv}
+                </span>
+              </Link>
+              <Link
+                to="/flujotv"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiTv className="text-red-500" />
+                  <span>Flujo Tv</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.flujotv}
+                </span>
+              </Link>
+              <Link
+                to="/vikirakuten"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiFilm className="text-pink-500" />
+                  <span>Viki Rakuten</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.vikirakuten}
+                </span>
+              </Link>
+              <Link
+                to="/pornhub"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiVideo className="text-red-700" />
+                  <span>Pornhub</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.pornhub}
+                </span>
+              </Link>
+              <Link
+                to="/paramount"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiFilm className="text-blue-400" />
+                  <span>Paramount</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.paramount}
+                </span>
+              </Link>
+              <Link
+                to="/licencias"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiFileText className="text-gray-500" />
+                  <span>Licencias</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.licencias}
+                </span>
+              </Link>
+              <Link
+                to="/capcut"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiPenTool className="text-green-500" />
+                  <span>Capcut</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.capcut}
+                </span>
+              </Link>
+              <Link
+                to="/duolingo"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiBook className="text-green-400" />
+                  <span>Duolingo</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.duolingo}
+                </span>
+              </Link>
+              <Link
+                to="/buscapersonas"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+              >
+                <div className="flex items-center space-x-2">
+                  <FiSearch className="text-yellow-400" />
+                  <span>Busca Personas</span>
+                </div>
+                <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {productsCount.buscapersonas}
+                </span>
+              </Link>
             </nav>
             {user && (
               <div className="p-4 border-t border-gray-800/50">
@@ -849,13 +1122,13 @@ const Max = () => {
         </aside>
 
         <main
-          className={`flex-1 transition-all duration-300 p-4 sm:p-6 md:pt-4 md:ml-64 min-h-screen`}
+          className={`flex-1 transition-all duration-300 p-4 sm:p-6 md:pt-4 md:ml-64 min-h-screen overflow-x-hidden`}
         >
           <section
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
@@ -864,12 +1137,12 @@ const Max = () => {
                 Cuentas Premium de Max
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Disfruta de tus series y películas favoritas con nuestros planes
+                Disfruta de películas y series exclusivas con nuestras cuentas Premium de Max
               </p>
             </div>
           </section>
 
-          <section className="container mx-auto">
+          <section className="container mx-auto px-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
               <h2 className="text-2xl sm:text-3xl font-bold text-white">
                 Planes Disponibles
@@ -889,21 +1162,21 @@ const Max = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 sm:gap-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
                 {filteredProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 min-w-[250px] border border-gray-700/50"
+                    className="bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 w-full border border-gray-700/50 flex flex-col p-4"
                   >
-                    <div className="relative h-52 sm:h-56 overflow-hidden">
+                    <div className="relative w-full aspect-square min-h-48 max-h-96 overflow-hidden bg-gray-900">
                       <img
                         src={product.image || "https://via.placeholder.com/300"}
                         alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        className="w-full h-full object-contain transition-transform duration-500 hover:scale-110"
                       />
                       {renderProductStatus(product)}
                     </div>
-                    <div className="p-5">
+                    <div className="p-5 flex flex-col flex-grow">
                       <h3 className="font-semibold text-lg sm:text-xl text-white mb-3">
                         {product.name}
                       </h3>
@@ -936,16 +1209,16 @@ const Max = () => {
                           S/ {formatPrice(product.price)}
                         </span>
                       </div>
-                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-4">
+                      <div className="flex justify-center items-center gap-4 mb-3">
                         <button
                           onClick={() => showDetails(product)}
-                          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-200 rounded-xl text-sm flex items-center justify-center transition-all border border-gray-600/50"
+                          className="flex-1 py-2 px-4 bg-gray-800/50 hover:bg-gray-700/50 text-white rounded-full text-sm flex items-center justify-center transition-all border border-gray-700/50"
                         >
                           <FiInfo className="mr-2" /> Detalles
                         </button>
                         <button
                           onClick={() => showTerms(product)}
-                          className="flex-1 py-2 px-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-200 rounded-xl text-sm flex items-center justify-center transition-all border border-gray-600/50"
+                          className="flex-1 py-2 px-4 bg-gray-800/50 hover:bg-gray-700/50 text-white rounded-full text-sm flex items-center justify-center transition-all border border-gray-700/50"
                         >
                           <FiFileText className="mr-2" /> Términos
                         </button>
@@ -955,10 +1228,10 @@ const Max = () => {
                         disabled={
                           product.status === "En stock" && product.stock <= 0
                         }
-                        className={`w-full py-3 rounded-xl flex items-center justify-center transition-all ${
+                        className={`w-full py-3 rounded-full flex items-center justify-center transition-all text-white font-medium text-sm ${
                           product.status === "A pedido" || product.stock > 0
-                            ? "bg-cyan-500 hover:bg-cyan-600 text-white"
-                            : "bg-red-600/50 text-gray-300 cursor-not-allowed"
+                            ? "bg-cyan-500 hover:bg-cyan-600"
+                            : "bg-red-600/50 cursor-not-allowed"
                         }`}
                       >
                         <FiShoppingCart className="mr-2" />
@@ -1196,7 +1469,15 @@ const Max = () => {
                   Términos - {detailModal.name}
                 </h2>
                 <button
-                  onClick={() => setTermsModal(false)}
+                  onClick={() => {
+                    setTermsModal(false);
+                    setDetailModal({
+                      name: detailModal.name,
+                      accountDetails: detailModal.accountDetails,
+                      provider: detailModal.provider,
+                      terms: detailModal.terms,
+                    });
+                  }}
                   className="text-gray-400 hover:text-white transition-all"
                 >
                   <FiX size={24} />
@@ -1233,7 +1514,7 @@ const Max = () => {
 
       {generalTermsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6">
-          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-700/50 animate-fadeIn">
+          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-600/50 animate-fadeIn">
             <div className="p-6 sm:p-8">
               <div className="flex justify-between items-start mb-6">
                 <h2 className="text-xl sm:text-2xl font-semibold text-white">

@@ -38,7 +38,7 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import logo from "../images/logo.png";
 
-const RedesSociales = () => {
+const AppleMusic = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -126,7 +126,7 @@ const RedesSociales = () => {
   useEffect(() => {
     const productsQuery = query(
       collection(db, "products"),
-      where("category", "==", "Redes Sociales")
+      where("category", "==", "Apple Music")
     );
     const productsUnsubscribe = onSnapshot(
       productsQuery,
@@ -184,17 +184,17 @@ const RedesSociales = () => {
         setProducts(productsWithProviders);
         setProductsCount((prev) => ({
           ...prev,
-          redessociales: productsWithProviders.length,
+          applemusic: productsWithProviders.length,
         }));
       },
       (err) => {
-        setError("Error al cargar productos de Redes Sociales");
+        setError("Error al cargar productos de Apple Music");
         console.error(err);
       }
     );
 
     const accountsQuery = query(
-      collection(db, "redessociales_accounts"),
+      collection(db, "applemusic_accounts"),
       where("status", "==", "available")
     );
     const accountsUnsubscribe = onSnapshot(
@@ -214,7 +214,6 @@ const RedesSociales = () => {
     );
 
     const categories = [
-      "Netflix",
       "Spotify",
       "Disney",
       "Max",
@@ -243,6 +242,7 @@ const RedesSociales = () => {
       "Capcut",
       "Duolingo",
       "Busca Personas",
+      "Netflix",
     ];
 
     const unsubscribes = categories.map((category) => {
@@ -399,7 +399,7 @@ const RedesSociales = () => {
               profile: accountData.profile || "No proporcionado",
             },
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "applemusic",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -484,7 +484,7 @@ const RedesSociales = () => {
             createdAt: new Date().toISOString(),
             accountDetails: null,
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "applemusic",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -590,7 +590,7 @@ const RedesSociales = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Redes Sociales`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Apple Music`);
     }
   };
 
@@ -673,7 +673,7 @@ const RedesSociales = () => {
           <div className="flex items-center relative w-full sm:w-auto sm:max-w-xs md:max-w-md mt-3 sm:mt-0 order-3 sm:order-2 sm:mx-3">
             <input
               type="text"
-              placeholder="Buscar en Redes Sociales..."
+              placeholder="Buscar en Apple Music..."
               className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -792,9 +792,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/max"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text
-
--gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiVideo className="text-purple-400" />
@@ -866,7 +864,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/redessociales"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiGlobe className="text-pink-400" />
@@ -974,7 +972,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/applemusic"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
               >
                 <div className="flex items-center space-x-2">
                   <FiMusic className="text-gray-600" />
@@ -1130,16 +1128,16 @@ const RedesSociales = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
             <div className="relative z-10 text-center px-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
-                Cuentas Premium de Redes Sociales
+                Cuentas Premium de Apple Music
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Accede a funciones premium en tus redes sociales favoritas
+                Disfruta de tu música favorita con nuestras cuentas premium de Apple Music
               </p>
             </div>
           </section>
@@ -1433,6 +1431,7 @@ const RedesSociales = () => {
                 </button>
               </div>
               <div className="space-y-5">
+                removing duplicate code here for brevity
                 <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">Proveedor:</h3>
                   <p className="text-gray-300">{detailModal.provider}</p>
@@ -1609,4 +1608,4 @@ const RedesSociales = () => {
   );
 };
 
-export default RedesSociales;
+export default AppleMusic;

@@ -38,7 +38,7 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import logo from "../images/logo.png";
 
-const RedesSociales = () => {
+const LicenciasMicrosoft = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -126,7 +126,7 @@ const RedesSociales = () => {
   useEffect(() => {
     const productsQuery = query(
       collection(db, "products"),
-      where("category", "==", "Redes Sociales")
+      where("category", "==", "Licencias")
     );
     const productsUnsubscribe = onSnapshot(
       productsQuery,
@@ -144,8 +144,8 @@ const RedesSociales = () => {
             providerId: data.providerId || "",
             providerPhone: data.providerPhone || "",
             acceptsOrders: data.status === "A pedido",
-            duration: data.duration || "1 mes",
-            type: data.type || "Premium",
+            duration: data.duration || "Permanente",
+            type: data.type || "Licencia",
             status: data.status || "En stock",
           };
         });
@@ -181,20 +181,22 @@ const RedesSociales = () => {
           })
         );
 
-        setProducts(productsWithProviders);
+        setProducts(productsWithProviders.filter((product) =>
+          product.name.toLowerCase().includes("microsoft")
+        ));
         setProductsCount((prev) => ({
           ...prev,
-          redessociales: productsWithProviders.length,
+          licencias: productsWithProviders.length,
         }));
       },
       (err) => {
-        setError("Error al cargar productos de Redes Sociales");
+        setError("Error al cargar licencias de Microsoft");
         console.error(err);
       }
     );
 
     const accountsQuery = query(
-      collection(db, "redessociales_accounts"),
+      collection(db, "licencias_accounts"),
       where("status", "==", "available")
     );
     const accountsUnsubscribe = onSnapshot(
@@ -209,7 +211,7 @@ const RedesSociales = () => {
         setAccounts(accountsData);
       },
       (err) => {
-        console.error("Error al cargar cuentas:", err);
+        console.error("Error al cargar licencias:", err);
       }
     );
 
@@ -331,7 +333,7 @@ const RedesSociales = () => {
           }
           const productData = productDoc.data();
           if (productData.availableAccounts <= 0) {
-            throw new Error("No hay cuentas disponibles para este producto");
+            throw new Error("No hay licencias disponibles para este producto");
           }
 
           const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
@@ -342,7 +344,7 @@ const RedesSociales = () => {
           );
           const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
           if (availableAccountsSnapshot.empty) {
-            throw new Error("No hay cuentas disponibles en la subcolección");
+            throw new Error("No hay licencias disponibles en la subcolección");
           }
           const accountDoc = availableAccountsSnapshot.docs[0];
           const accountRef = accountDoc.ref;
@@ -394,12 +396,12 @@ const RedesSociales = () => {
             phoneNumber: purchaseModal.phoneNumber,
             createdAt: new Date().toISOString(),
             accountDetails: {
+              licenseKey: accountData.licenseKey || "No proporcionado",
               email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
+              activationInstructions: accountData.activationInstructions || "No proporcionado",
             },
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "licencias",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -415,9 +417,9 @@ const RedesSociales = () => {
             saleDate: new Date().toISOString(),
             status: "completed",
             accountDetails: {
+              licenseKey: accountData.licenseKey || "No proporcionado",
               email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
+              activationInstructions: accountData.activationInstructions || "No proporcionado",
             },
           });
 
@@ -432,9 +434,9 @@ const RedesSociales = () => {
               customerName: purchaseModal.customerName,
               customerPhone: purchaseModal.phoneNumber,
               accountDetails: {
+                licenseKey: accountData.licenseKey || "No proporcionado",
                 email: accountData.email || "No proporcionado",
-                password: accountData.password || "No proporcionado",
-                profile: accountData.profile || "No proporcionado",
+                activationInstructions: accountData.activationInstructions || "No proporcionado",
               },
               saleDate: new Date().toISOString(),
               status: "completed",
@@ -484,7 +486,7 @@ const RedesSociales = () => {
             createdAt: new Date().toISOString(),
             accountDetails: null,
             terms: selectedProduct.terms,
-            type: "redessociales",
+            type: "licencias",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -534,9 +536,9 @@ const RedesSociales = () => {
             accountDetails:
               selectedProduct.status === "En stock"
                 ? {
+                    licenseKey: accountData?.licenseKey || "No proporcionado",
                     email: accountData?.email || "No proporcionado",
-                    password: accountData?.password || "No proporcionado",
-                    profile: accountData?.profile || "No proporcionado",
+                    activationInstructions: accountData?.activationInstructions || "No proporcionado",
                   }
                 : null,
           },
@@ -547,7 +549,7 @@ const RedesSociales = () => {
       setNotificationModal({
         message:
           selectedProduct.status === "En stock"
-            ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
+            ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de la licencia."
             : "¡Pedido realizado con éxito! El proveedor se contactará contigo para coordinar los detalles.",
       });
     } catch (err) {
@@ -590,7 +592,7 @@ const RedesSociales = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Redes Sociales`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Licencias`);
     }
   };
 
@@ -673,7 +675,7 @@ const RedesSociales = () => {
           <div className="flex items-center relative w-full sm:w-auto sm:max-w-xs md:max-w-md mt-3 sm:mt-0 order-3 sm:order-2 sm:mx-3">
             <input
               type="text"
-              placeholder="Buscar en Redes Sociales..."
+              placeholder="Buscar licencias Microsoft..."
               className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -792,9 +794,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/max"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text
-
--gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiVideo className="text-purple-400" />
@@ -866,7 +866,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/redessociales"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiGlobe className="text-pink-400" />
@@ -1058,7 +1058,7 @@ const RedesSociales = () => {
               </Link>
               <Link
                 to="/licencias"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
               >
                 <div className="flex items-center space-x-2">
                   <FiFileText className="text-gray-500" />
@@ -1130,16 +1130,16 @@ const RedesSociales = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
             <div className="relative z-10 text-center px-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
-                Cuentas Premium de Redes Sociales
+                Licencias Microsoft
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Accede a funciones premium en tus redes sociales favoritas
+                Adquiere licencias oficiales de Microsoft para tus necesidades personales o profesionales
               </p>
             </div>
           </section>
@@ -1147,7 +1147,7 @@ const RedesSociales = () => {
           <section className="container mx-auto px-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
               <h2 className="text-2xl sm:text-3xl font-bold text-white">
-                Planes Disponibles
+                Licencias Disponibles
               </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
@@ -1160,7 +1160,7 @@ const RedesSociales = () => {
             {filteredProducts.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-300 text-lg sm:text-xl">
-                  No se encontraron productos que coincidan con tu búsqueda
+                  No se encontraron licencias que coincidan con tu búsqueda
                 </p>
               </div>
             ) : (
@@ -1196,13 +1196,13 @@ const RedesSociales = () => {
                             Duración:
                           </span>
                           <span className="ml-2 text-gray-200">
-                            {product.duration || "1 mes"}
+                            {product.duration || "Permanente"}
                           </span>
                         </p>
                         <p className="flex items-center">
                           <span className="font-medium text-gray-400">Tipo:</span>
                           <span className="ml-2 text-gray-200">
-                            {product.type || "Premium"}
+                            {product.type || "Licencia"}
                           </span>
                         </p>
                       </div>
@@ -1439,7 +1439,7 @@ const RedesSociales = () => {
                 </div>
                 <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">
-                    Detalles de la cuenta:
+                    Detalles de la licencia:
                   </h3>
                   <div className="p-3 bg-gray-800/50 rounded-lg">
                     <pre className="text-sm text-gray-300 whitespace-pre-wrap">
@@ -1538,14 +1538,14 @@ const RedesSociales = () => {
                     <p>
                       Al realizar una compra, el proveedor se contactará contigo
                       dentro de las próximas 24 horas hábiles para entregarte los
-                      accesos a tu cuenta.
+                      detalles de la licencia.
                     </p>
                   </div>
                   <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
                     <h3 className="font-semibold text-white mb-2">2. Garantía</h3>
                     <p>
-                      Todos los productos tienen una garantía de 7 días. Si tienes
-                      problemas con tu cuenta durante este periodo, el proveedor
+                      Todas las licencias tienen una garantía de 7 días. Si tienes
+                      problemas con tu licencia durante este periodo, el proveedor
                       está obligado a resolverlos o reembolsarte.
                     </p>
                   </div>
@@ -1554,9 +1554,9 @@ const RedesSociales = () => {
                       3. Uso Responsable
                     </h3>
                     <p>
-                      El cliente es responsable del uso que dé a la cuenta
-                      adquirida. No nos hacemos responsables por suspensiones o
-                      baneos por mal uso.
+                      El cliente es responsable del uso que dé a la licencia
+                      adquirida. No nos hacemos responsables por problemas derivados
+                      de un uso indebido.
                     </p>
                   </div>
                   <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
@@ -1567,10 +1567,11 @@ const RedesSociales = () => {
                     </p>
                   </div>
                   <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
-                    <h3 className="font-semibold text-white mb-2">5. Renovaciones</h3>
+                    <h3 className="font-semibold text-white mb-2">5. Activación</h3>
                     <p>
-                      Las renovaciones son manuales y deben solicitarse al
-                      proveedor antes de que finalice el período contratado.
+                      Las licencias deben activarse siguiendo las instrucciones
+                      proporcionadas por el proveedor. No se admiten devoluciones
+                      por errores en el proceso de activación.
                     </p>
                   </div>
                 </div>
@@ -1609,4 +1610,4 @@ const RedesSociales = () => {
   );
 };
 
-export default RedesSociales;
+export default LicenciasMicrosoft;

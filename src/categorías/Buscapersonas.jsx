@@ -38,7 +38,7 @@ import { auth, db } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import logo from "../images/logo.png";
 
-const WinTv = () => {
+const BuscaPersonas = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -126,7 +126,7 @@ const WinTv = () => {
   useEffect(() => {
     const productsQuery = query(
       collection(db, "products"),
-      where("category", "==", "WinTv")
+      where("category", "==", "BuscaPersonas")
     );
     const productsUnsubscribe = onSnapshot(
       productsQuery,
@@ -184,17 +184,17 @@ const WinTv = () => {
         setProducts(productsWithProviders);
         setProductsCount((prev) => ({
           ...prev,
-          wintv: productsWithProviders.length,
+          buscapersonas: productsWithProviders.length,
         }));
       },
       (err) => {
-        setError("Error al cargar productos de Win TV");
+        setError("Error al cargar productos de Busca Personas");
         console.error(err);
       }
     );
 
     const accountsQuery = query(
-      collection(db, "wintv_accounts"),
+      collection(db, "buscapersonas_accounts"),
       where("status", "==", "available")
     );
     const accountsUnsubscribe = onSnapshot(
@@ -242,7 +242,6 @@ const WinTv = () => {
       "Licencias",
       "Capcut",
       "Duolingo",
-      "Busca Personas",
     ];
 
     const unsubscribes = categories.map((category) => {
@@ -399,7 +398,7 @@ const WinTv = () => {
               profile: accountData.profile || "No proporcionado",
             },
             terms: selectedProduct.terms,
-            type: "wintv",
+            type: "buscapersonas",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -484,7 +483,7 @@ const WinTv = () => {
             createdAt: new Date().toISOString(),
             accountDetails: null,
             terms: selectedProduct.terms,
-            type: "wintv",
+            type: "buscapersonas",
           };
           transaction.update(userRef, {
             balance: newBalance,
@@ -590,7 +589,7 @@ const WinTv = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Win Tv`);
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}&category=Busca Personas`);
     }
   };
 
@@ -673,7 +672,7 @@ const WinTv = () => {
           <div className="flex items-center relative w-full sm:w-auto sm:max-w-xs md:max-w-md mt-3 sm:mt-0 order-3 sm:order-2 sm:mx-3">
             <input
               type="text"
-              placeholder="Buscar en Win TV..."
+              placeholder="Buscar en Busca Personas..."
               className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -960,7 +959,7 @@ const WinTv = () => {
               </Link>
               <Link
                 to="/wintv"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FiTv className="text-orange-500" />
@@ -1092,7 +1091,7 @@ const WinTv = () => {
               </Link>
               <Link
                 to="/buscapersonas"
-                className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-cyan-600/30 text-white border border-cyan-500/30"
               >
                 <div className="flex items-center space-x-2">
                   <FiSearch className="text-yellow-400" />
@@ -1128,16 +1127,16 @@ const WinTv = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-blue-900/50"></div>
             <div className="relative z-10 text-center px-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
-                Cuentas Premium de Win TV
+                Servicios de Busca Personas
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Disfruta de entretenimiento en streaming con nuestras cuentas premium de Win TV
+                Accede a herramientas y servicios premium para localizar personas de manera rápida y segura
               </p>
             </div>
           </section>
@@ -1311,7 +1310,7 @@ const WinTv = () => {
                     Número de WhatsApp
                   </label>
                   <input
-                    type="tel~~tel"
+                    type="tel"
                     value={purchaseModal.phoneNumber}
                     onChange={(e) =>
                       setPurchaseModal((prev) => ({
@@ -1521,7 +1520,7 @@ const WinTv = () => {
                   Términos y Condiciones Generales
                 </h2>
                 <button
-                  onClick={() => setGeneralTermsModal(false)}
+                  onClick={() => setGeneralTimeModal(false)}
                   className="text-gray-400 hover:text-white transition-all"
                 >
                   <FiX size={24} />
@@ -1536,14 +1535,14 @@ const WinTv = () => {
                     <p>
                       Al realizar una compra, el proveedor se contactará contigo
                       dentro de las próximas 24 horas hábiles para entregarte los
-                      accesos a tu cuenta.
+                      accesos a tu servicio.
                     </p>
                   </div>
                   <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
                     <h3 className="font-semibold text-white mb-2">2. Garantía</h3>
                     <p>
                       Todos los productos tienen una garantía de 7 días. Si tienes
-                      problemas con tu cuenta durante este periodo, el proveedor
+                      problemas con tu servicio durante este periodo, el proveedor
                       está obligado a resolverlos o reembolsarte.
                     </p>
                   </div>
@@ -1552,9 +1551,9 @@ const WinTv = () => {
                       3. Uso Responsable
                     </h3>
                     <p>
-                      El cliente es responsable del uso que dé a la cuenta
-                      adquirida. No nos hacemos responsables por suspensiones o
-                      baneos por mal uso.
+                      El cliente es responsable del uso que dé al servicio
+                      adquirido. No nos hacemos responsables por suspensiones o
+                      restricciones por mal uso.
                     </p>
                   </div>
                   <div className="bg-gray-700/50 p-4 sm:p-5 rounded-xl border border-gray-600/50">
@@ -1607,4 +1606,4 @@ const WinTv = () => {
   );
 };
 
-export default WinTv;
+export default BuscaPersonas;

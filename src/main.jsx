@@ -17,7 +17,7 @@ import PrimeVideo from "./categorías/PrimeVideo"; // Página de Prime Video
 import Vix from "./categorías/Vix"; // Página de Vix
 import Canva from "./categorías/canva";
 import ChatGPT from "./categorías/ChatGPT";
-import Crunchyroll from "./categorías/crunchyroll";
+import Crunchyroll from "./categorías/Crunchyroll";
 import RedesSociales from "./categorías/RedesSociales.jsx";
 import AppleMusic from "./categorías/AppleMusic";
 import AppleTv from "./categorías/AppleTv";

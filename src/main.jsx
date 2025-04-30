@@ -13,16 +13,35 @@ import Netflix from "./categorías/Netflix"; // Página de Netflix
 import Disney from "./categorías/Disney"; // Página de Disney
 import Max from "./categorías/Max"; // Página de Max
 import Spotify from "./categorías/Spotify"; // Página de Spotify
-import PrimeVideo from "./categorías/PrimeVideo"; // Página de Prime video
+import PrimeVideo from "./categorías/PrimeVideo"; // Página de Prime Video
 import Vix from "./categorías/Vix"; // Página de Vix
 import Canva from "./categorías/canva";
 import ChatGPT from "./categorías/ChatGPT";
-import Crunchyroll from "./categorías/Crunchyroll";
-import Redes from "./categorías/RedesSociales.jsx";
+import Crunchyroll from "./categorías/crunchyroll";
+import RedesSociales from "./categorías/RedesSociales.jsx";
+import AppleMusic from "./categorías/AppleMusic";
+import AppleTv from "./categorías/AppleTv";
+import IPTV from "./categorías/IPTV";
+import FlujoTv from "./categorías/FlujoTv";
+import VikiRakuten from "./categorías/VikiRakuten";
+import Pornhub from "./categorías/Pornhub";
+import Paramount from "./categorías/Paramount";
+import Licencias from "./categorías/Licencias";
+import Capcut from "./categorías/Capcut";
+import Duolingo from "./categorías/Duolingo";
+import Dgo from "./categorías/Dgo";
+import LigaMax from "./categorías/LigaMax";
+import MovistarPlay from "./categorías/MovistarPlay";
+import Youtube from "./categorías/Youtube";
+import Deezer from "./categorías/Deezer";
+import Tidal from "./categorías/Tidal";
+import Vpn from "./categorías/Vpn";
+import WinTv from "./categorías/WinTv";
+import BuscaPersonas from "./categorías/BuscaPersonas";
 import Maintenance from "./pages/Maintenance"; // Nueva página de mantenimiento
 
 const App = () => {
-  const isMaintenance = true; // Cambiar a false para desactivar el mantenimiento
+  const isMaintenance = false; // Cambiar a false para desactivar el mantenimiento
 
   return (
     <Routes>
@@ -30,7 +49,6 @@ const App = () => {
         // Modo mantenimiento activado
         <>
           <Route path="*" element={<Maintenance />} />
-          
           {/* Opcional: Rutas que siguen funcionando durante mantenimiento */}
           {/* <Route path="/admin-panel" element={<DashboardAdmin />} /> */}
         </>
@@ -48,12 +66,31 @@ const App = () => {
           <Route path="/disney" element={<Disney />} />
           <Route path="/max" element={<Max />} />
           <Route path="/spotify" element={<Spotify />} />
-          <Route path="/primeVideo" element={<PrimeVideo />} />
+          <Route path="/primevideo" element={<PrimeVideo />} />
           <Route path="/vix" element={<Vix />} />
-          <Route path="/Canva" element={<Canva />} />
-          <Route path="/ChatGPT" element={<ChatGPT />} />
-          <Route path="/Crunchyroll" element={<Crunchyroll />} />
-          <Route path="/RedesSociales" element={<Redes />} />
+          <Route path="/canva" element={<Canva />} />
+          <Route path="/chatgpt" element={<ChatGPT />} />
+          <Route path="/crunchyroll" element={<Crunchyroll />} />
+          <Route path="/redessociales" element={<RedesSociales />} />
+          <Route path="/applemusic" element={<AppleMusic />} />
+          <Route path="/appletv" element={<AppleTv />} />
+          <Route path="/iptv" element={<IPTV />} />
+          <Route path="/flujotv" element={<FlujoTv />} />
+          <Route path="/vikirakuten" element={<VikiRakuten />} />
+          <Route path="/pornhub" element={<Pornhub />} />
+          <Route path="/paramount" element={<Paramount />} />
+          <Route path="/licencias" element={<Licencias />} />
+          <Route path="/capcut" element={<Capcut />} />
+          <Route path="/duolingo" element={<Duolingo />} />
+          <Route path="/dgo" element={<Dgo />} />
+          <Route path="/ligamax" element={<LigaMax />} />
+          <Route path="/movistarplay" element={<MovistarPlay />} />
+          <Route path="/youtube" element={<Youtube />} />
+          <Route path="/deezer" element={<Deezer />} />
+          <Route path="/tidal" element={<Tidal />} />
+          <Route path="/vpn" element={<Vpn />} />
+          <Route path="/wintv" element={<WinTv />} />
+          <Route path="/buscapersonas" element={<BuscaPersonas />} />
         </>
       )}
     </Routes>

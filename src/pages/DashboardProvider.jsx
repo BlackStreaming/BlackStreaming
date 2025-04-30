@@ -79,7 +79,7 @@ const DashboardProvider = () => {
     const categoryMap = {
       netflix: "Netflix",
       spotify: "Spotify",
-      disney: "Disney+",
+      disney: "Disney",
       max: "Max",
       primevideo: "Prime Video",
       vix: "Vix",
@@ -829,7 +829,7 @@ const DashboardProvider = () => {
                       >
                         <option value="Netflix">Netflix</option>
                         <option value="Spotify">Spotify</option>
-                        <option value="Disney+">Disney+</option>
+                        <option value="Disney">Disney+</option>
                         <option value="Max">Max</option>
                         <option value="Prime Video">Prime Video</option>
                         <option value="Vix">Vix</option>
@@ -837,25 +837,25 @@ const DashboardProvider = () => {
                         <option value="Canva">Canva</option>
                         <option value="ChatGPT">ChatGPT</option>
                         <option value="Redes Sociales">Redes Sociales</option>
-                        <option value="DGO">DGO</option>
-                        <option value="Liga MX">Liga MX</option>
+                        <option value="Dgo">DGO</option>
+                        <option value="Liga MaX">Liga MaX</option>
                         <option value="Movistar Play">Movistar Play</option>
                         <option value="YouTube">YouTube</option>
                         <option value="Deezer">Deezer</option>
                         <option value="Tidal">Tidal</option>
                         <option value="VPN">VPN</option>
-                        <option value="WinTV">WinTV</option>
+                        <option value="WinTv">WinTV</option>
                         <option value="Apple Music">Apple Music</option>
-                        <option value="Apple TV">Apple TV</option>
-                        <option value="IPTV">IPTV</option>
-                        <option value="Flujo TV">Flujo TV</option>
+                        <option value="Apple Tv">Apple TV</option>
+                        <option value="Iptv">IPTV</option>
+                        <option value="Flujo Tv">Flujo TV</option>
                         <option value="Viki Rakuten">Viki Rakuten</option>
                         <option value="Pornhub">Pornhub</option>
                         <option value="Paramount">Paramount</option>
                         <option value="Licencias">Licencias</option>
                         <option value="Capcut">Capcut</option>
                         <option value="Duolingo">Duolingo</option>
-                        <option value="Buscapersonas">Buscapersonas</option>
+                        <option value="BuscaPersonas">Buscapersonas</option>
                       </select>
                     </div>
                     <div>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  FiSettings, 
-  FiLogOut, 
-  FiDollarSign, 
-  FiShoppingCart, 
-  FiMenu, 
+import {
+  FiSettings,
+  FiLogOut,
+  FiDollarSign,
+  FiShoppingCart,
+  FiMenu,
   FiHome,
   FiMessageCircle,
   FiRefreshCw,
@@ -15,21 +15,22 @@ import {
   FiInfo,
   FiFileText,
   FiPhone,
-  FiX
+  FiX,
 } from "react-icons/fi";
 import { db, auth } from "../firebase";
-import { 
-  addDoc, 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  getDoc, 
+import {
+  addDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  Timestamp,
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -72,6 +73,17 @@ const DashboardUser = () => {
         return;
       }
 
+      // Obtener la duración en días (del proveedor o predeterminada a 30 días)
+      const durationDays = parseInt(order.durationDays) || 30;
+
+      // Obtener la fecha actual como Timestamp para saleDate y startDate
+      const nowTimestamp = Timestamp.now();
+      const nowDate = nowTimestamp.toDate();
+
+      // Calcular endDate sumando durationDays a nowTimestamp
+      const endDate = new Date(nowDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const endDateISOString = endDate.toISOString();
+
       // Crear un nuevo pedido en la colección sales
       const newOrder = {
         customerId: userId,
@@ -90,11 +102,12 @@ const DashboardUser = () => {
         providerId: order.providerId || "",
         providerPhone: order.providerPhone || order.providerWhatsapp || "51999999999",
         status: "completed",
-        createdAt: serverTimestamp(),
-        saleDate: serverTimestamp(),
-        startDate: serverTimestamp(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        renewedAt: serverTimestamp(),
+        createdAt: nowTimestamp,
+        saleDate: nowTimestamp, // Fecha de creación del pedido
+        startDate: nowTimestamp, // Fecha de inicio (igual a saleDate)
+        endDate: endDateISOString, // Calcular endDate según durationDays
+        durationDays: durationDays, // Guardar la duración para referencia
+        renewedAt: nowTimestamp,
       };
 
       // Guardar el nuevo pedido en la colección sales
@@ -107,21 +120,30 @@ const DashboardUser = () => {
       });
 
       // Actualizar el estado local
-      setBalance(prev => prev - price);
-      setOrders(prev => [...prev, {
-        ...newOrder,
-        id: saleRef.id,
-        saleDate: new Date(),
-        startDate: new Date(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        account: newOrder.accountDetails,
-        client: {
-          customerName: newOrder.customerName,
-          email: newOrder.customerEmail,
-          phone: newOrder.phoneNumber,
+      setBalance((prev) => prev - price);
+      setOrders((prev) => [
+        ...prev,
+        {
+          ...newOrder,
+          id: saleRef.id,
+          saleDate: nowDate, // Usar la fecha convertida para visualización
+          startDate: nowDate, // Usar la fecha convertida para visualización
+          endDate: endDate, // Usar la fecha calculada
+          account: newOrder.accountDetails,
+          client: {
+            customerName: newOrder.customerName,
+            email: newOrder.customerEmail,
+            phone: newOrder.phoneNumber,
+          },
+          orderId: `BS-${saleRef.id.slice(0, 8).toUpperCase()}`,
         },
-        orderId: `BS-${saleRef.id.slice(0, 8).toUpperCase()}`,
-      }]);
+      ]);
+
+      console.log("Pedido renovado:", {
+        saleDate: nowDate.toISOString(),
+        startDate: nowDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
 
       showModal("Éxito", "¡Pedido renovado exitosamente!");
     } catch (error) {
@@ -147,8 +169,10 @@ const DashboardUser = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
+        console.log("Usuario no autenticado, redirigiendo a /login");
         navigate("/login");
       } else {
+        console.log("Usuario autenticado, userId:", user.uid);
         setUserId(user.uid);
         setEmail(user.email || "No especificado");
         setLoading(false);
@@ -189,55 +213,118 @@ const DashboardUser = () => {
 
   // Cargar pedidos desde la colección sales
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      console.log("userId no está definido, no se cargarán los pedidos.");
+      return;
+    }
+
+    console.log("Cargando pedidos para userId:", userId);
 
     const fetchOrders = () => {
-      const q = query(
-        collection(db, "sales"),
-        where("customerId", "==", userId)
+      const q = query(collection(db, "sales"), where("customerId", "==", userId));
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          console.log("Snapshot recibido, documentos encontrados:", snapshot.docs.length);
+          if (snapshot.empty) {
+            console.log("No se encontraron pedidos para este usuario.");
+            setOrders([]);
+            setLoading(false);
+            return;
+          }
+
+          const formattedOrders = snapshot.docs.map((saleDoc) => {
+            const data = saleDoc.data();
+            console.log("Procesando documento:", saleDoc.id, data);
+
+            // Convertir las fechas de Firestore a objetos Date
+            const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.();
+            if (!saleDateRaw) {
+              console.warn(`Documento ${saleDoc.id} no tiene saleDate ni createdAt. Usando fecha actual como respaldo.`);
+            }
+            const saleDate = saleDateRaw || new Date();
+
+            // Manejar startDate: usar startDate si existe, de lo contrario usar saleDate
+            let startDateRaw = data.startDate?.toDate?.();
+            let startDate = startDateRaw || saleDate;
+            let shouldUpdateFirestore = false;
+
+            if (!startDateRaw) {
+              console.log(`Documento ${saleDoc.id} no tiene startDate. Usando saleDate:`, saleDate);
+              shouldUpdateFirestore = true; // Marcar para actualizar Firestore
+            }
+
+            const durationDays = data.durationDays || 30;
+            let endDate;
+
+            if (data.endDate) {
+              endDate = new Date(data.endDate);
+              console.log(`Documento ${saleDoc.id} - endDate leído de Firestore:`, endDate);
+            } else {
+              endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+              console.log(`Documento ${saleDoc.id} - endDate calculado:`, endDate);
+              shouldUpdateFirestore = true; // Marcar para actualizar Firestore
+            }
+
+            // Actualizar Firestore si falta startDate o endDate
+            if (shouldUpdateFirestore) {
+              console.log(`Actualizando documento ${saleDoc.id} en Firestore con startDate y/o endDate`);
+              updateDoc(doc(db, "sales", saleDoc.id), {
+                startDate: startDateRaw || Timestamp.fromDate(saleDate),
+                endDate: endDate.toISOString(),
+                durationDays: durationDays,
+              }).catch((error) => {
+                console.error("Error al actualizar startDate/endDate en Firestore:", error);
+              });
+            }
+
+            const order = {
+              id: saleDoc.id,
+              productName: data.productName || "Producto sin nombre",
+              category: data.type || "netflix",
+              price: parseFloat(data.price) || 0,
+              provider: data.provider || "No especificado",
+              providerId: data.providerId || "",
+              providerPhone: data.providerPhone || data.providerWhatsapp || "51999999999",
+              providerWhatsapp: data.providerPhone || data.providerWhatsapp || "51999999999",
+              status: data.status || "completed",
+              saleDate: saleDate,
+              startDate: startDate,
+              endDate: endDate,
+              durationDays: durationDays,
+              account: {
+                email: data.accountDetails?.email || "No especificado",
+                password: data.accountDetails?.password || "No especificado",
+                profile: data.accountDetails?.profile || "No especificado",
+              },
+              client: {
+                customerName: data.customerName || "Cliente desconocido",
+                email: data.customerEmail || "No especificado",
+                phone: data.phoneNumber || "No especificado",
+              },
+              paymentMethod: "BlackStreaming",
+              orderId: `BS-${saleDoc.id.slice(0, 8).toUpperCase()}`,
+            };
+
+            console.log(`Documento ${saleDoc.id} - Fechas procesadas:`, {
+              saleDate: saleDate.toISOString(),
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+            });
+
+            return order;
+          });
+
+          console.log("Pedidos formateados:", formattedOrders);
+          setOrders(formattedOrders);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error al obtener pedidos:", error);
+          setError("Error al cargar pedidos: " + error.message);
+          setLoading(false);
+        }
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const formattedOrders = snapshot.docs.map(doc => {
-          const data = doc.data();
-          const saleDate = data.saleDate?.toDate?.() || data.createdAt?.toDate?.() || new Date();
-          const startDate = data.startDate?.toDate?.() || data.createdAt?.toDate?.() || new Date();
-          const endDate = data.endDate
-            ? new Date(data.endDate)
-            : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-          return {
-            id: doc.id,
-            productName: data.productName || "Producto sin nombre",
-            category: data.type || "netflix",
-            price: parseFloat(data.price) || 0,
-            provider: data.provider || "No especificado",
-            providerId: data.providerId || "",
-            providerPhone: data.providerPhone || data.providerWhatsapp || "51999999999",
-            providerWhatsapp: data.providerPhone || data.providerWhatsapp || "51999999999",
-            status: data.status || "completed",
-            saleDate: saleDate,
-            startDate: startDate,
-            endDate: endDate,
-            account: {
-              email: data.accountDetails?.email || "No especificado",
-              password: data.accountDetails?.password || "No especificado",
-              profile: data.accountDetails?.profile || "No especificado",
-            },
-            client: {
-              customerName: data.customerName || "Cliente desconocido",
-              email: data.customerEmail || "No especificado",
-              phone: data.phoneNumber || "No especificado",
-            },
-            paymentMethod: "BlackStreaming",
-            orderId: `BS-${doc.id.slice(0, 8).toUpperCase()}`,
-          };
-        });
-        setOrders(formattedOrders);
-        setLoading(false);
-      }, (error) => {
-        console.error("Error al obtener pedidos:", error);
-        setError("Error al cargar pedidos");
-        setLoading(false);
-      });
 
       return unsubscribe;
     };
@@ -250,22 +337,23 @@ const DashboardUser = () => {
     if (!userId) return;
 
     const fetchTopUps = () => {
-      const q = query(
-        collection(db, "pendingTopUps"),
-        where("userId", "==", userId)
+      const q = query(collection(db, "pendingTopUps"), where("userId", "==", userId));
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const topUpsList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            date: doc.data().requestedAt?.toDate?.() || new Date(),
+            amount: parseFloat(doc.data().amount) || 0,
+          }));
+          setTopUps(topUpsList);
+        },
+        (error) => {
+          console.error("Error al obtener recargas:", error);
+          setError("Error al cargar recargas");
+        }
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const topUpsList = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().requestedAt?.toDate?.() || new Date(),
-          amount: parseFloat(doc.data().amount) || 0,
-        }));
-        setTopUps(topUpsList);
-      }, (error) => {
-        console.error("Error al obtener recargas:", error);
-        setError("Error al cargar recargas");
-      });
 
       return unsubscribe;
     };
@@ -309,12 +397,14 @@ const DashboardUser = () => {
     try {
       const d = date instanceof Date ? date : new Date(date);
       if (isNaN(d.getTime())) return "Fecha inválida";
-      return d.toLocaleDateString("es-ES", {
+      return d.toLocaleString("es-ES", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
       });
     } catch (err) {
       console.error("Error formatting date:", err);
@@ -355,7 +445,7 @@ const DashboardUser = () => {
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">
               Bienvenido, <span className="text-cyan-400">{userName}</span>
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Información de cuenta</h3>
@@ -370,49 +460,54 @@ const DashboardUser = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Saldo disponible</h3>
                 <p className="text-3xl font-bold text-white">S/ {balance.toFixed(2)}</p>
               </div>
-              
+
               <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Pedidos activos</h3>
                 <p className="text-3xl font-bold text-white">
-                  {orders.filter(o => {
-                    const endDate = new Date(o.endDate);
-                    return endDate > new Date() && o.status === "completed";
-                  }).length}
+                  {
+                    orders.filter((o) => {
+                      const endDate = new Date(o.endDate);
+                      return endDate > new Date() && o.status === "completed";
+                    }).length
+                  }
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
               <h3 className="text-lg font-semibold text-white mb-3">Pedidos recientes</h3>
               {orders.slice(0, 3).map((order, index) => {
                 const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                 const isOnDemand = order.status === "pending";
                 return (
-                  <div key={index} className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2">
+                  <div
+                    key={index}
+                    className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2"
+                  >
                     <div className="flex justify-between items-center">
                       <p className="font-medium text-white">{order.productName}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        isOnDemand ? "bg-yellow-900/80 text-yellow-400" :
-                        isActive ? "bg-green-900/80 text-green-400" :
-                        "bg-red-900/80 text-red-400"
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          isOnDemand
+                            ? "bg-yellow-900/80 text-yellow-400"
+                            : isActive
+                            ? "bg-green-900/80 text-green-400"
+                            : "bg-red-900/80 text-red-400"
+                        }`}
+                      >
                         {isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-400">
-                      Vence: {formatDate(order.endDate)}
-                    </p>
+                    <p className="text-sm text-gray-400">Vence: {formatDate(order.endDate)}</p>
                   </div>
                 );
               })}
-              {orders.length === 0 && (
-                <p className="text-gray-400 py-2">No tienes pedidos recientes</p>
-              )}
+              {orders.length === 0 && <p className="text-gray-400 py-2">No tienes pedidos recientes</p>}
               {orders.length > 3 && (
                 <button
                   onClick={() => setActivePage("pedidos")}
@@ -430,7 +525,7 @@ const DashboardUser = () => {
           <div className="space-y-6 max-w-6xl mx-auto">
             <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
               <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Recargar saldo</h3>
-              
+
               <div className="max-w-md mx-auto">
                 <div className="mb-4">
                   <label className="block text-gray-300 mb-2">Monto a recargar (S/)</label>
@@ -444,7 +539,7 @@ const DashboardUser = () => {
                     step="0.01"
                   />
                 </div>
-                
+
                 <button
                   onClick={handleTopUpRequest}
                   disabled={!amount || parseFloat(amount) < 10}
@@ -483,31 +578,45 @@ const DashboardUser = () => {
 
             <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
               <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Historial de recargas</h3>
-              
+
               {topUps.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-600/50">
                     <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Monto
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Fecha
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {topUps.map((topUp, index) => (
                         <tr key={index} className="hover:bg-gray-700/50 transition-all duration-300">
-                          <td className="px-4 py-4 whitespace-nowrap text-white">S/ {topUp.amount.toFixed(2)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-white">
+                            S/ {topUp.amount.toFixed(2)}
+                          </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              topUp.status === "aprobado" ? "bg-green-900/80 text-green-400" :
-                              topUp.status === "pendiente" ? "bg-yellow-900/80 text-yellow-400" :
-                              "bg-red-900/80 text-red-400"
-                            }`}>
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                topUp.status === "aprobado"
+                                  ? "bg-green-900/80 text-green-400"
+                                  : topUp.status === "pendiente"
+                                  ? "bg-yellow-900/80 text-yellow-400"
+                                  : "bg-red-900/80 text-red-400"
+                              }`}
+                            >
                               {topUp.status}
                             </span>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-gray-400">{formatDate(topUp.date)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-400">
+                            {formatDate(topUp.date)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -527,58 +636,65 @@ const DashboardUser = () => {
         return (
           <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Mis pedidos</h3>
-            
+
             {orders.length > 0 ? (
               <div className="space-y-6">
                 {orders.map((order, index) => {
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   const isOnDemand = order.status === "pending";
-                  
-                  const statusIcon = isOnDemand
-                    ? <FiClock className="text-yellow-400" />
-                    : isActive
-                    ? <FiCheckCircle className="text-green-400" />
-                    : <FiAlertCircle className="text-red-400" />;
+
+                  const statusIcon = isOnDemand ? (
+                    <FiClock className="text-yellow-400" />
+                  ) : isActive ? (
+                    <FiCheckCircle className="text-green-400" />
+                  ) : (
+                    <FiAlertCircle className="text-red-400" />
+                  );
 
                   const whatsappProviderMessage = encodeURIComponent(
-                    `*Consulta sobre Pedido - ${order.productName || 'Sin nombre'}*\n\n` +
-                    `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
-                    `*Producto:* ${order.productName || 'No especificado'}\n` +
-                    `*Precio:* S/ ${price.toFixed(2)}\n` +
-                    `*Estado:* ${isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}\n` +
-                    `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
-                    `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
-                    (isOnDemand
-                      ? `Hola, he comprado un producto a pedido (${order.productName}). ¿En cuántos días estará listo? Por favor, indíqueme los detalles para coordinar.`
-                      : `Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`)
+                    `*Consulta sobre Pedido - ${order.productName || "Sin nombre"}*\n\n` +
+                      `*N° Pedido:* ${order.orderId || "No especificado"}\n` +
+                      `*Producto:* ${order.productName || "No especificado"}\n` +
+                      `*Precio:* S/ ${price.toFixed(2)}\n` +
+                      `*Estado:* ${isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}\n` +
+                      `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
+                      `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
+                      (isOnDemand
+                        ? `Hola, he comprado un producto a pedido (${order.productName}). ¿En cuántos días estará listo? Por favor, indíqueme los detalles para coordinar.`
+                        : `Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`)
                   );
 
                   const whatsappClientMessage = encodeURIComponent(
-                    `Hola ${order.client?.customerName || 'Cliente'},\n\n` +
-                    `*Aquí tienes la información de tu pedido en BlackStreaming:*\n` +
-                    `*Producto:* ${order.productName || 'Sin nombre'}\n` +
-                    `*N° Pedido:* ${order.orderId || 'No especificado'}\n` +
-                    `*Precio:* S/ ${price.toFixed(2)}\n` +
-                    `*Estado:* ${isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}\n` +
-                    `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
-                    `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
-                    (isOnDemand
-                      ? `*Nota:* Este pedido está "A pedido". El proveedor se contactará contigo para coordinar los detalles.\n\n`
-                      : `*Detalles de la Cuenta:*\n` +
-                        `📧 *Email:* ${order.account?.email || 'No especificado'}\n` +
-                        `🔑 *Contraseña:* ${order.account?.password || 'No especificado'}\n` +
-                        `👤 *Perfil:* ${order.account?.profile || 'No especificado'}\n\n`) +
-                    `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
+                    `Hola ${order.client?.customerName || "Cliente"},\n\n` +
+                      `*Aquí tienes la información de tu pedido en BlackStreaming:*\n` +
+                      `*Producto:* ${order.productName || "Sin nombre"}\n` +
+                      `*N° Pedido:* ${order.orderId || "No especificado"}\n` +
+                      `*Precio:* S/ ${price.toFixed(2)}\n` +
+                      `*Estado:* ${isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}\n` +
+                      `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
+                      `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
+                      (isOnDemand
+                        ? `*Nota:* Este pedido está "A pedido". El proveedor se contactará contigo para coordinar los detalles.\n\n`
+                        : `*Detalles de la Cuenta:*\n` +
+                          `📧 *Email:* ${order.account?.email || "No especificado"}\n` +
+                          `🔑 *Contraseña:* ${order.account?.password || "No especificado"}\n` +
+                          `👤 *Perfil:* ${order.account?.profile || "No especificado"}\n\n`) +
+                      `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
                   );
 
                   return (
-                    <div key={index} className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+                    <div
+                      key={index}
+                      className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300"
+                    >
                       <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
                         <div className="flex items-center space-x-3">
                           {statusIcon}
                           <div>
-                            <h4 className="font-semibold text-white">{order.productName || "Producto sin nombre"}</h4>
+                            <h4 className="font-semibold text-white">
+                              {order.productName || "Producto sin nombre"}
+                            </h4>
                             {order.orderId && (
                               <p className="text-xs text-gray-400">N° Pedido: {order.orderId}</p>
                             )}
@@ -591,7 +707,7 @@ const DashboardUser = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                           {/* Sección de Detalles de la Cuenta */}
@@ -602,21 +718,28 @@ const DashboardUser = () => {
                             <div className="space-y-2 text-gray-300">
                               {isOnDemand ? (
                                 <p className="text-gray-400">
-                                  Este pedido está "A pedido". El proveedor se contactará contigo para proporcionarte los detalles.
+                                  Este pedido está "A pedido". El proveedor se contactará contigo para
+                                  proporcionarte los detalles.
                                 </p>
                               ) : (
                                 <>
                                   <p>
-                                    <span className="font-medium text-gray-400">Email:</span> 
-                                    <span className="block text-white break-all">{order.account?.email || 'No especificado'}</span>
+                                    <span className="font-medium text-gray-400">Email:</span>
+                                    <span className="block text-white break-all">
+                                      {order.account?.email || "No especificado"}
+                                    </span>
                                   </p>
                                   <p>
-                                    <span className="font-medium text-gray-400">Contraseña:</span> 
-                                    <span className="block text-white break-all">{order.account?.password || 'No especificado'}</span>
+                                    <span className="font-medium text-gray-400">Contraseña:</span>
+                                    <span className="block text-white break-all">
+                                      {order.account?.password || "No especificado"}
+                                    </span>
                                   </p>
                                   <p>
-                                    <span className="font-medium text-gray-400">Perfil:</span> 
-                                    <span className="block text-white">{order.account?.profile || 'No especificado'}</span>
+                                    <span className="font-medium text-gray-400">Perfil:</span>
+                                    <span className="block text-white">
+                                      {order.account?.profile || "No especificado"}
+                                    </span>
                                   </p>
                                 </>
                               )}
@@ -630,34 +753,44 @@ const DashboardUser = () => {
                             </h5>
                             <div className="space-y-2 text-gray-300">
                               <p>
-                                <span className="font-medium text-gray-400">Proveedor:</span> 
-                                <span className="block text-white">{order.provider || 'No especificado'}</span>
+                                <span className="font-medium text-gray-400">Proveedor:</span>
+                                <span className="block text-white">{order.provider || "No especificado"}</span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Teléfono del Proveedor:</span> 
-                                <span className="block text-white">{order.providerPhone || 'No especificado'}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Estado:</span> 
-                                <span className={`block px-2 py-1 text-xs rounded-full ${
-                                  isOnDemand ? 'bg-yellow-900/80 text-yellow-400' :
-                                  isActive ? 'bg-green-900/80 text-green-400' :
-                                  'bg-red-900/80 text-red-400'
-                                }`}>
-                                  {isOnDemand ? 'A pedido' : isActive ? 'Activo' : 'Expirado'}
+                                <span className="font-medium text-gray-400">Teléfono del Proveedor:</span>
+                                <span className="block text-white">
+                                  {order.providerPhone || "No especificado"}
                                 </span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Método de Pago:</span> 
+                                <span className="font-medium text-gray-400">Estado:</span>
+                                <span
+                                  className={`block px-2 py-1 text-xs rounded-full ${
+                                    isOnDemand
+                                      ? "bg-yellow-900/80 text-yellow-400"
+                                      : isActive
+                                      ? "bg-green-900/80 text-green-400"
+                                      : "bg-red-900/80 text-red-400"
+                                  }`}
+                                >
+                                  {isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}
+                                </span>
+                              </p>
+                              <p>
+                                <span className="font-medium text-gray-400">Método de Pago:</span>
                                 <span className="block text-white">BlackStreaming</span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Fecha de inicio:</span> 
+                                <span className="font-medium text-gray-400">Fecha de inicio:</span>
                                 <span className="block text-white">{formatDate(order.startDate)}</span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Fecha de vencimiento:</span> 
+                                <span className="font-medium text-gray-400">Fecha de vencimiento:</span>
                                 <span className="block text-white">{formatDate(order.endDate)}</span>
+                              </p>
+                              <p>
+                                <span className="font-medium text-gray-400">Duración:</span>
+                                <span className="block text-white">{order.durationDays} días</span>
                               </p>
                             </div>
                           </div>
@@ -669,17 +802,19 @@ const DashboardUser = () => {
                             </h5>
                             <div className="space-y-2 text-gray-300">
                               <p>
-                                <span className="font-medium text-gray-400">Nombre:</span> 
-                                <span className="block text-white">{order.client?.customerName || 'No especificado'}</span>
+                                <span className="font-medium text-gray-400">Nombre:</span>
+                                <span className="block text-white">
+                                  {order.client?.customerName || "No especificado"}
+                                </span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Teléfono:</span> 
-                                <span className="block text-white">{order.client?.phone || 'No especificado'}</span>
+                                <span className="font-medium text-gray-400">Teléfono:</span>
+                                <span className="block text-white">{order.client?.phone || "No especificado"}</span>
                               </p>
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Botones de acción */}
                         <div className="flex flex-col sm:flex-row gap-3">
                           <a
@@ -690,13 +825,13 @@ const DashboardUser = () => {
                           >
                             <FiMessageCircle size={18} /> Contactar Proveedor
                           </a>
-                          
+
                           <button
                             onClick={() => handleRenewal(order)}
                             disabled={loading}
                             className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
-                              loading 
-                                ? "bg-gray-600 text-gray-400 cursor-not-allowed" 
+                              loading
+                                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                                 : "bg-cyan-500 hover:bg-cyan-600 text-white"
                             }`}
                           >
@@ -733,7 +868,7 @@ const DashboardUser = () => {
         return (
           <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-2xl mx-auto border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Configuración de cuenta</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-gray-300 mb-2">Nombre de usuario</label>
@@ -745,7 +880,7 @@ const DashboardUser = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-gray-300 mb-2">Correo electrónico</label>
                 <input
@@ -756,7 +891,7 @@ const DashboardUser = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-gray-300 mb-2">Cambiar contraseña</label>
                 <input
@@ -767,15 +902,19 @@ const DashboardUser = () => {
                 />
                 <p className="text-sm text-gray-400 mt-1">Cambio de contraseña no disponible en esta versión.</p>
               </div>
-              
+
               <button
                 onClick={async () => {
                   try {
                     const userRef = doc(db, "users", userId);
-                    await setDoc(userRef, {
-                      username: userName,
-                      email: email,
-                    }, { merge: true });
+                    await setDoc(
+                      userRef,
+                      {
+                        username: userName,
+                        email: email,
+                      },
+                      { merge: true }
+                    );
                     showModal("Éxito", "Configuración actualizada correctamente");
                   } catch (error) {
                     setError("Error al actualizar la configuración");
@@ -787,7 +926,7 @@ const DashboardUser = () => {
                 Guardar cambios
               </button>
             </div>
-            
+
             <div className="mt-8 border-t border-gray-600/50 pt-6">
               <button
                 onClick={handleLogout}
@@ -806,7 +945,7 @@ const DashboardUser = () => {
             <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
             <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
             <button
-              onClick={() => setActivePage('inicio')}
+              onClick={() => setActivePage("inicio")}
               className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
             >
               Volver al inicio
@@ -827,9 +966,13 @@ const DashboardUser = () => {
           <FiMenu className="text-xl" />
         </button>
       </div>
-      
+
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}>
+      <aside
+        className={`fixed inset-y-0 left-0 transform ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}
+      >
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
@@ -840,7 +983,7 @@ const DashboardUser = () => {
               <FiX className="text-lg" />
             </button>
           </div>
-          
+
           <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50">
             <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
               {userName.charAt(0).toUpperCase()}
@@ -850,37 +993,57 @@ const DashboardUser = () => {
               <p className="text-xs text-gray-400 truncate">{email}</p>
             </div>
           </div>
-          
+
           <nav className="flex-1 space-y-1">
             <button
-              onClick={() => { setActivePage('inicio'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'inicio' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
+              onClick={() => {
+                setActivePage("inicio");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activePage === "inicio" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
+              }`}
             >
               <FiHome /> <span>Inicio</span>
             </button>
-            
+
             <button
-              onClick={() => { setActivePage('recargar'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'recargar' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
+              onClick={() => {
+                setActivePage("recargar");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activePage === "recargar" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
+              }`}
             >
               <FiDollarSign /> <span>Recargar saldo</span>
             </button>
-            
+
             <button
-              onClick={() => { setActivePage('pedidos'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'pedidos' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
+              onClick={() => {
+                setActivePage("pedidos");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activePage === "pedidos" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
+              }`}
             >
               <FiShoppingCart /> <span>Mis pedidos</span>
             </button>
-            
+
             <button
-              onClick={() => { setActivePage('configuracion'); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activePage === 'configuracion' ? 'bg-cyan-900/80 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
+              onClick={() => {
+                setActivePage("configuracion");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activePage === "configuracion" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
+              }`}
             >
               <FiSettings /> <span>Configuración</span>
             </button>
           </nav>
-          
+
           <div className="mt-auto pt-4">
             <button
               onClick={handleLogout}
@@ -891,12 +1054,10 @@ const DashboardUser = () => {
           </div>
         </div>
       </aside>
-      
+
       {/* Main content */}
-      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">
-        {renderContent()}
-      </main>
-      
+      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">{renderContent()}</main>
+
       {/* Modal for Alerts */}
       {modal.show && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -924,10 +1085,10 @@ const DashboardUser = () => {
           </div>
         </div>
       )}
-      
+
       {/* Overlay for mobile menu */}
       {menuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setMenuOpen(false)}
         ></div>

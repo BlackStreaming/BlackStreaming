@@ -32,7 +32,7 @@ import {
   onSnapshot,
   Timestamp,
 } from "firebase/firestore";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, updatePassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 const DashboardUser = () => {
@@ -48,6 +48,7 @@ const DashboardUser = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState({ show: false, message: "", title: "" });
+  const [newPassword, setNewPassword] = useState("");
   const navigate = useNavigate();
 
   // Function to show modal
@@ -103,10 +104,10 @@ const DashboardUser = () => {
         providerPhone: order.providerPhone || order.providerWhatsapp || "51999999999",
         status: "completed",
         createdAt: nowTimestamp,
-        saleDate: nowTimestamp, // Fecha de creación del pedido
-        startDate: nowTimestamp, // Fecha de inicio (igual a saleDate)
-        endDate: endDateISOString, // Calcular endDate según durationDays
-        durationDays: durationDays, // Guardar la duración para referencia
+        saleDate: nowTimestamp,
+        startDate: nowTimestamp,
+        endDate: endDateISOString,
+        durationDays: durationDays,
         renewedAt: nowTimestamp,
       };
 
@@ -126,9 +127,9 @@ const DashboardUser = () => {
         {
           ...newOrder,
           id: saleRef.id,
-          saleDate: nowDate, // Usar la fecha convertida para visualización
-          startDate: nowDate, // Usar la fecha convertida para visualización
-          endDate: endDate, // Usar la fecha calculada
+          saleDate: nowDate,
+          startDate: nowDate,
+          endDate: endDate,
           account: newOrder.accountDetails,
           client: {
             customerName: newOrder.customerName,
@@ -211,7 +212,7 @@ const DashboardUser = () => {
     fetchUserData();
   }, [userId]);
 
-  // Cargar pedidos desde la colección sales
+  // Cargar pedidos desde la colección sales con contador de días
   useEffect(() => {
     if (!userId) {
       console.log("userId no está definido, no se cargarán los pedidos.");
@@ -237,21 +238,19 @@ const DashboardUser = () => {
             const data = saleDoc.data();
             console.log("Procesando documento:", saleDoc.id, data);
 
-            // Convertir las fechas de Firestore a objetos Date
             const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.();
             if (!saleDateRaw) {
               console.warn(`Documento ${saleDoc.id} no tiene saleDate ni createdAt. Usando fecha actual como respaldo.`);
             }
             const saleDate = saleDateRaw || new Date();
 
-            // Manejar startDate: usar startDate si existe, de lo contrario usar saleDate
             let startDateRaw = data.startDate?.toDate?.();
             let startDate = startDateRaw || saleDate;
             let shouldUpdateFirestore = false;
 
             if (!startDateRaw) {
               console.log(`Documento ${saleDoc.id} no tiene startDate. Usando saleDate:`, saleDate);
-              shouldUpdateFirestore = true; // Marcar para actualizar Firestore
+              shouldUpdateFirestore = true;
             }
 
             const durationDays = data.durationDays || 30;
@@ -263,10 +262,9 @@ const DashboardUser = () => {
             } else {
               endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
               console.log(`Documento ${saleDoc.id} - endDate calculado:`, endDate);
-              shouldUpdateFirestore = true; // Marcar para actualizar Firestore
+              shouldUpdateFirestore = true;
             }
 
-            // Actualizar Firestore si falta startDate o endDate
             if (shouldUpdateFirestore) {
               console.log(`Actualizando documento ${saleDoc.id} en Firestore con startDate y/o endDate`);
               updateDoc(doc(db, "sales", saleDoc.id), {
@@ -277,6 +275,17 @@ const DashboardUser = () => {
                 console.error("Error al actualizar startDate/endDate en Firestore:", error);
               });
             }
+
+            // Calcular días totales y días restantes
+            const now = new Date();
+            const totalDurationMs = endDate.getTime() - startDate.getTime();
+            const elapsedMs = now.getTime() - startDate.getTime();
+            const remainingMs = endDate.getTime() - now.getTime();
+
+            const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
+            const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+            const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
+            const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
 
             const order = {
               id: saleDoc.id,
@@ -292,6 +301,9 @@ const DashboardUser = () => {
               startDate: startDate,
               endDate: endDate,
               durationDays: durationDays,
+              daysRemaining: daysRemaining,
+              totalDays: totalDays,
+              timeElapsedPercentage: timeElapsedPercentage,
               account: {
                 email: data.accountDetails?.email || "No especificado",
                 password: data.accountDetails?.password || "No especificado",
@@ -310,6 +322,9 @@ const DashboardUser = () => {
               saleDate: saleDate.toISOString(),
               startDate: startDate.toISOString(),
               endDate: endDate.toISOString(),
+              daysRemaining: daysRemaining,
+              totalDays: totalDays,
+              timeElapsedPercentage: timeElapsedPercentage,
             });
 
             return order;
@@ -326,7 +341,28 @@ const DashboardUser = () => {
         }
       );
 
-      return unsubscribe;
+      const interval = setInterval(() => {
+        setOrders((prevOrders) =>
+          prevOrders.map((order) => {
+            const now = new Date();
+            const totalDurationMs = new Date(order.endDate).getTime() - new Date(order.startDate).getTime();
+            const elapsedMs = now.getTime() - new Date(order.startDate).getTime();
+            const remainingMs = new Date(order.endDate).getTime() - now.getTime();
+
+            const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
+            const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+            const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
+            const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
+
+            return { ...order, daysRemaining, totalDays, timeElapsedPercentage };
+          })
+        );
+      }, 60000); // Actualizar cada minuto
+
+      return () => {
+        unsubscribe();
+        clearInterval(interval);
+      };
     };
 
     fetchOrders();
@@ -409,6 +445,25 @@ const DashboardUser = () => {
     } catch (err) {
       console.error("Error formatting date:", err);
       return "Fecha inválida";
+    }
+  };
+
+  // Actualizar contraseña
+  const handleUpdatePassword = async () => {
+    try {
+      if (!newPassword) {
+        setError("Por favor, ingrese una nueva contraseña");
+        return;
+      }
+      const user = auth.currentUser;
+      if (user) {
+        await updatePassword(user, newPassword);
+        setNewPassword("");
+        showModal("Éxito", "Contraseña actualizada correctamente");
+      }
+    } catch (error) {
+      console.error("Error al actualizar la contraseña:", error);
+      setError("Error al actualizar la contraseña: " + error.message);
     }
   };
 
@@ -643,6 +698,16 @@ const DashboardUser = () => {
                   const price = parseFloat(order.price) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   const isOnDemand = order.status === "pending";
+                  const daysRemaining = order.daysRemaining || 0;
+                  const timeElapsedPercentage = order.timeElapsedPercentage || 0;
+
+                  // Determinar el color según el porcentaje de tiempo transcurrido
+                  let countdownColor = "text-green-400"; // 0% a 70%
+                  if (timeElapsedPercentage > 70 && timeElapsedPercentage <= 90) {
+                    countdownColor = "text-yellow-400"; // 70% a 90%
+                  } else if (timeElapsedPercentage > 90) {
+                    countdownColor = "text-red-400"; // 90% a 100%
+                  }
 
                   const statusIcon = isOnDemand ? (
                     <FiClock className="text-yellow-400" />
@@ -678,10 +743,15 @@ const DashboardUser = () => {
                         ? `*Nota:* Este pedido está "A pedido". El proveedor se contactará contigo para coordinar los detalles.\n\n`
                         : `*Detalles de la Cuenta:*\n` +
                           `📧 *Email:* ${order.account?.email || "No especificado"}\n` +
-                          `🔑 *Contraseña:* ${order.account?.password || "No especificado"}\n` +
+                          `🔑 *Contraseña:* ${order.account?.password || "No especificado "}\n` +
                           `👤 *Perfil:* ${order.account?.profile || "No especificado"}\n\n`) +
                       `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
                   );
+
+                  // Normalizar el número de teléfono del proveedor para WhatsApp
+                  const normalizedProviderPhone = order.providerPhone
+                    ? order.providerPhone.replace(/^\+51/, "").replace(/\D/g, "")
+                    : "51999999999";
 
                   return (
                     <div
@@ -702,8 +772,12 @@ const DashboardUser = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-white">S/ {price.toFixed(2)}</p>
-                          <p className="text-xs text-gray-400">
-                            {formatDate(order.startDate)} - {formatDate(order.endDate)}
+                          <p
+                            className={`text-xs font-medium ${isOnDemand ? "text-yellow-400" : countdownColor}`}
+                          >
+                            {isOnDemand
+                              ? "Pendiente de activación"
+                              : `${daysRemaining} día${daysRemaining === 1 ? "" : "s"} restante${daysRemaining === 1 ? "" : "s"}`}
                           </p>
                         </div>
                       </div>
@@ -789,8 +863,8 @@ const DashboardUser = () => {
                                 <span className="block text-white">{formatDate(order.endDate)}</span>
                               </p>
                               <p>
-                                <span className="font-medium text-gray-400">Duración:</span>
-                                <span className="block text-white">{order.durationDays} días</span>
+                                <span className="font-medium text-gray-400">Días restantes:</span>
+                                <span className={`block ${countdownColor}`}>{daysRemaining}</span>
                               </p>
                             </div>
                           </div>
@@ -818,7 +892,7 @@ const DashboardUser = () => {
                         {/* Botones de acción */}
                         <div className="flex flex-col sm:flex-row gap-3">
                           <a
-                            href={`https://wa.me/${order.providerPhone}?text=${whatsappProviderMessage}`}
+                            href={`https://wa.me/51${normalizedProviderPhone}?text=${whatsappProviderMessage}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
@@ -875,9 +949,8 @@ const DashboardUser = () => {
                 <input
                   type="text"
                   value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  required
+                  disabled
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-gray-400 border border-gray-600/50 cursor-not-allowed"
                 />
               </div>
 
@@ -886,9 +959,8 @@ const DashboardUser = () => {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  required
+                  disabled
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-gray-400 border border-gray-600/50 cursor-not-allowed"
                 />
               </div>
 
@@ -896,32 +968,19 @@ const DashboardUser = () => {
                 <label className="block text-gray-300 mb-2">Cambiar contraseña</label>
                 <input
                   type="password"
-                  placeholder="Nueva contraseña (dejar vacío para no cambiar)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nueva contraseña"
                   className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  disabled
                 />
-                <p className="text-sm text-gray-400 mt-1">Cambio de contraseña no disponible en esta versión.</p>
               </div>
 
               <button
-                onClick={async () => {
-                  try {
-                    const userRef = doc(db, "users", userId);
-                    await setDoc(
-                      userRef,
-                      {
-                        username: userName,
-                        email: email,
-                      },
-                      { merge: true }
-                    );
-                    showModal("Éxito", "Configuración actualizada correctamente");
-                  } catch (error) {
-                    setError("Error al actualizar la configuración");
-                    console.error("Error updating settings:", error);
-                  }
-                }}
-                className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium mt-4 transition-all duration-300"
+                onClick={handleUpdatePassword}
+                disabled={!newPassword}
+                className={`w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium mt-4 transition-all duration-300 ${
+                  !newPassword ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
                 Guardar cambios
               </button>

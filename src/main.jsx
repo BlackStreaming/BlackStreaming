@@ -41,7 +41,7 @@ import BuscaPersonas from "./categorías/BuscaPersonas";
 import Maintenance from "./pages/Maintenance"; // Nueva página de mantenimiento
 
 const App = () => {
-  const isMaintenance = false; // Cambiar a false para desactivar el mantenimiento
+  const isMaintenance = true; // Cambiar a false para desactivar el mantenimiento
 
   return (
     <Routes>

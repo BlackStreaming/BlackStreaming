@@ -12,9 +12,7 @@ import {
   FiClock,
   FiCheckCircle,
   FiAlertCircle,
-  FiInfo,
   FiFileText,
-  FiPhone,
   FiX,
 } from "react-icons/fi";
 import { db, auth } from "../firebase";
@@ -25,8 +23,6 @@ import {
   where,
   getDocs,
   doc,
-  getDoc,
-  setDoc,
   updateDoc,
   serverTimestamp,
   onSnapshot,
@@ -45,6 +41,7 @@ const DashboardUser = () => {
   const [userId, setUserId] = useState(null);
   const [activePage, setActivePage] = useState("inicio");
   const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState({ show: false, message: "", title: "" });
@@ -61,31 +58,43 @@ const DashboardUser = () => {
     setModal({ show: false, message: "", title: "" });
   };
 
+  // Fetch products to get terms and conditions
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsQuery = query(collection(db, "products"));
+        const querySnapshot = await getDocs(productsQuery);
+        const productsData = {};
+        querySnapshot.forEach((doc) => {
+          productsData[doc.id] = doc.data();
+        });
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setError("Error al cargar productos");
+      }
+    };
+    fetchProducts();
+  }, []);
+
   // Función para renovar pedido
   const handleRenewal = async (order) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Verificar saldo suficiente
       const price = parseFloat(order.price) || 0;
       if (balance < price) {
         setError("Saldo insuficiente para renovar el pedido. Por favor, recarga tu saldo.");
         return;
       }
 
-      // Obtener la duración en días (del proveedor o predeterminada a 30 días)
       const durationDays = parseInt(order.durationDays) || 30;
-
-      // Obtener la fecha actual como Timestamp para saleDate y startDate
       const nowTimestamp = Timestamp.now();
       const nowDate = nowTimestamp.toDate();
-
-      // Calcular endDate sumando durationDays a nowTimestamp
       const endDate = new Date(nowDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
       const endDateISOString = endDate.toISOString();
 
-      // Crear un nuevo pedido en la colección sales
       const newOrder = {
         customerId: userId,
         customerName: order.client?.customerName || "Cliente desconocido",
@@ -98,6 +107,7 @@ const DashboardUser = () => {
           email: order.account?.email || "No especificado",
           password: order.account?.password || "No especificado",
           profile: order.account?.profile || "No especificado",
+          pin: order.account?.pin || "No especificado",
         },
         provider: order.provider || "Proveedor desconocido",
         providerId: order.providerId || "",
@@ -109,18 +119,15 @@ const DashboardUser = () => {
         endDate: endDateISOString,
         durationDays: durationDays,
         renewedAt: nowTimestamp,
+        renewable: order.renewable !== undefined ? order.renewable : true,
       };
 
-      // Guardar el nuevo pedido en la colección sales
       const saleRef = await addDoc(collection(db, "sales"), newOrder);
-
-      // Actualizar el saldo del usuario
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         balance: balance - price,
       });
 
-      // Actualizar el estado local
       setBalance((prev) => prev - price);
       setOrders((prev) => [
         ...prev,
@@ -137,14 +144,9 @@ const DashboardUser = () => {
             phone: newOrder.phoneNumber,
           },
           orderId: `BS-${saleRef.id.slice(0, 8).toUpperCase()}`,
+          renewable: newOrder.renewable,
         },
       ]);
-
-      console.log("Pedido renovado:", {
-        saleDate: nowDate.toISOString(),
-        startDate: nowDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
 
       showModal("Éxito", "¡Pedido renovado exitosamente!");
     } catch (error) {
@@ -170,10 +172,8 @@ const DashboardUser = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        console.log("Usuario no autenticado, redirigiendo a /login");
         navigate("/login");
       } else {
-        console.log("Usuario autenticado, userId:", user.uid);
         setUserId(user.uid);
         setEmail(user.email || "No especificado");
         setLoading(false);
@@ -198,9 +198,6 @@ const DashboardUser = () => {
           } else {
             setError("Usuario no encontrado");
           }
-        }, (error) => {
-          console.error("Error al obtener datos del usuario:", error);
-          setError("Error al cargar datos del usuario");
         });
         return unsubscribe;
       } catch (error) {
@@ -214,21 +211,14 @@ const DashboardUser = () => {
 
   // Cargar pedidos desde la colección sales con contador de días
   useEffect(() => {
-    if (!userId) {
-      console.log("userId no está definido, no se cargarán los pedidos.");
-      return;
-    }
-
-    console.log("Cargando pedidos para userId:", userId);
+    if (!userId) return;
 
     const fetchOrders = () => {
       const q = query(collection(db, "sales"), where("customerId", "==", userId));
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          console.log("Snapshot recibido, documentos encontrados:", snapshot.docs.length);
           if (snapshot.empty) {
-            console.log("No se encontraron pedidos para este usuario.");
             setOrders([]);
             setLoading(false);
             return;
@@ -236,20 +226,14 @@ const DashboardUser = () => {
 
           const formattedOrders = snapshot.docs.map((saleDoc) => {
             const data = saleDoc.data();
-            console.log("Procesando documento:", saleDoc.id, data);
-
-            const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.();
-            if (!saleDateRaw) {
-              console.warn(`Documento ${saleDoc.id} no tiene saleDate ni createdAt. Usando fecha actual como respaldo.`);
-            }
-            const saleDate = saleDateRaw || new Date();
+            const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.() || new Date();
+            const saleDate = saleDateRaw;
 
             let startDateRaw = data.startDate?.toDate?.();
             let startDate = startDateRaw || saleDate;
             let shouldUpdateFirestore = false;
 
             if (!startDateRaw) {
-              console.log(`Documento ${saleDoc.id} no tiene startDate. Usando saleDate:`, saleDate);
               shouldUpdateFirestore = true;
             }
 
@@ -258,15 +242,12 @@ const DashboardUser = () => {
 
             if (data.endDate) {
               endDate = new Date(data.endDate);
-              console.log(`Documento ${saleDoc.id} - endDate leído de Firestore:`, endDate);
             } else {
               endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
-              console.log(`Documento ${saleDoc.id} - endDate calculado:`, endDate);
               shouldUpdateFirestore = true;
             }
 
             if (shouldUpdateFirestore) {
-              console.log(`Actualizando documento ${saleDoc.id} en Firestore con startDate y/o endDate`);
               updateDoc(doc(db, "sales", saleDoc.id), {
                 startDate: startDateRaw || Timestamp.fromDate(saleDate),
                 endDate: endDate.toISOString(),
@@ -276,7 +257,6 @@ const DashboardUser = () => {
               });
             }
 
-            // Calcular días totales y días restantes
             const now = new Date();
             const totalDurationMs = endDate.getTime() - startDate.getTime();
             const elapsedMs = now.getTime() - startDate.getTime();
@@ -287,7 +267,9 @@ const DashboardUser = () => {
             const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
             const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
 
-            const order = {
+            const productTerms = products[data.providerId]?.terms || "No se especificaron términos y condiciones.";
+
+            return {
               id: saleDoc.id,
               productName: data.productName || "Producto sin nombre",
               category: data.type || "netflix",
@@ -308,6 +290,7 @@ const DashboardUser = () => {
                 email: data.accountDetails?.email || "No especificado",
                 password: data.accountDetails?.password || "No especificado",
                 profile: data.accountDetails?.profile || "No especificado",
+                pin: data.accountDetails?.pin || "No especificado",
               },
               client: {
                 customerName: data.customerName || "Cliente desconocido",
@@ -316,21 +299,11 @@ const DashboardUser = () => {
               },
               paymentMethod: "BlackStreaming",
               orderId: `BS-${saleDoc.id.slice(0, 8).toUpperCase()}`,
+              termsAndConditions: productTerms,
+              renewable: data.renewable !== undefined ? data.renewable : true,
             };
-
-            console.log(`Documento ${saleDoc.id} - Fechas procesadas:`, {
-              saleDate: saleDate.toISOString(),
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
-              daysRemaining: daysRemaining,
-              totalDays: totalDays,
-              timeElapsedPercentage: timeElapsedPercentage,
-            });
-
-            return order;
           });
 
-          console.log("Pedidos formateados:", formattedOrders);
           setOrders(formattedOrders);
           setLoading(false);
         },
@@ -357,7 +330,7 @@ const DashboardUser = () => {
             return { ...order, daysRemaining, totalDays, timeElapsedPercentage };
           })
         );
-      }, 60000); // Actualizar cada minuto
+      }, 60000);
 
       return () => {
         unsubscribe();
@@ -366,7 +339,7 @@ const DashboardUser = () => {
     };
 
     fetchOrders();
-  }, [userId]);
+  }, [userId, products]);
 
   // Cargar recargas
   useEffect(() => {
@@ -433,14 +406,10 @@ const DashboardUser = () => {
     try {
       const d = date instanceof Date ? date : new Date(date);
       if (isNaN(d.getTime())) return "Fecha inválida";
-      return d.toLocaleString("es-ES", {
+      return d.toLocaleDateString("es-ES", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
       });
     } catch (err) {
       console.error("Error formatting date:", err);
@@ -524,12 +493,10 @@ const DashboardUser = () => {
               <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Pedidos activos</h3>
                 <p className="text-3xl font-bold text-white">
-                  {
-                    orders.filter((o) => {
-                      const endDate = new Date(o.endDate);
-                      return endDate > new Date() && o.status === "completed";
-                    }).length
-                  }
+                  {orders.filter((o) => {
+                    const endDate = new Date(o.endDate);
+                    return endDate > new Date() && o.status === "completed";
+                  }).length}
                 </p>
               </div>
             </div>
@@ -608,7 +575,6 @@ const DashboardUser = () => {
                 </button>
               </div>
 
-              {/* Instrucciones de método de pago */}
               <div className="mt-6 bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50 max-w-md mx-auto">
                 <h4 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center">
                   <FiDollarSign className="mr-2" /> ¿Cómo realizar tu recarga?
@@ -621,7 +587,9 @@ const DashboardUser = () => {
                   Una vez realizado el pago, por favor contáctanos vía WhatsApp al mismo número para confirmar tu recarga.
                 </p>
                 <a
-                  href="https://wa.me/51940505969?text=Hola%2C%20he%20realizado%20una%20recarga%20a%20trav%C3%A9s%20de%20Yape.%20Por%20favor%2C%20confirma%20mi%20pago."
+                  href={`https://wa.me/51940505969?text=${encodeURIComponent(
+                    "Hola 😊, he realizado una recarga a través de Yape. Por favor, confirma mi pago."
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all duration-300"
@@ -701,12 +669,11 @@ const DashboardUser = () => {
                   const daysRemaining = order.daysRemaining || 0;
                   const timeElapsedPercentage = order.timeElapsedPercentage || 0;
 
-                  // Determinar el color según el porcentaje de tiempo transcurrido
-                  let countdownColor = "text-green-400"; // 0% a 70%
+                  let countdownColor = "text-green-400";
                   if (timeElapsedPercentage > 70 && timeElapsedPercentage <= 90) {
-                    countdownColor = "text-yellow-400"; // 70% a 90%
+                    countdownColor = "text-yellow-400";
                   } else if (timeElapsedPercentage > 90) {
-                    countdownColor = "text-red-400"; // 90% a 100%
+                    countdownColor = "text-red-400";
                   }
 
                   const statusIcon = isOnDemand ? (
@@ -726,29 +693,33 @@ const DashboardUser = () => {
                       `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                       `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
                       (isOnDemand
-                        ? `Hola, he comprado un producto a pedido (${order.productName}). ¿En cuántos días estará listo? Por favor, indíqueme los detalles para coordinar.`
+                        ? `Hola 😊, he comprado un producto a pedido (${order.productName}). ¿En cuántos días estará listo? Por favor, indíqueme los detalles para coordinar.`
                         : `Por favor indíqueme cómo puedo resolver mi consulta sobre este pedido.`)
                   );
 
                   const whatsappClientMessage = encodeURIComponent(
-                    `Hola ${order.client?.customerName || "Cliente"},\n\n` +
-                      `*Aquí tienes la información de tu pedido en BlackStreaming:*\n` +
-                      `*Producto:* ${order.productName || "Sin nombre"}\n` +
-                      `*N° Pedido:* ${order.orderId || "No especificado"}\n` +
-                      `*Precio:* S/ ${price.toFixed(2)}\n` +
-                      `*Estado:* ${isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}\n` +
-                      `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
-                      `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n\n` +
+                    `😊 Estimado/a ${order.client?.customerName || "Cliente"} 😊\n\n` +
+                      `Le enviamos la información de su suscripción a nuestro servicio de streaming:\n` +
+                      `📌 Tipo: ${order.productName || "Sin nombre"}.\n` +
+                      `🔢 Código: ${order.orderId || "No especificado"}\n` +
+                      (isOnDemand
+                        ? ""
+                        : `📧 Correo: ${order.account?.email || "No especificado"}\n` +
+                          `🔐 Contraseña: ${order.account?.password || "No especificado"}\n` +
+                          `👤 Perfil: ${order.account?.profile || "No especificado"}\n` +
+                          `📌 PIN: ${order.account?.pin || "No especificado"}\n`) +
+                      `🌐 URL: Sin URL\n` +
+                      `📅 Fecha de creación: ${formatDate(order.startDate)}\n` +
+                      `📅 Fecha de vencimiento: ${formatDate(order.endDate)}\n` +
+                      `🏁 Días contratados: ${order.durationDays || 30} días.\n\n` +
                       (isOnDemand
                         ? `*Nota:* Este pedido está "A pedido". El proveedor se contactará contigo para coordinar los detalles.\n\n`
-                        : `*Detalles de la Cuenta:*\n` +
-                          `📧 *Email:* ${order.account?.email || "No especificado"}\n` +
-                          `🔑 *Contraseña:* ${order.account?.password || "No especificado "}\n` +
-                          `👤 *Perfil:* ${order.account?.profile || "No especificado"}\n\n`) +
-                      `Si tienes alguna duda o necesitas soporte, no dudes en contactarnos. ¡Gracias por elegir BlackStreaming!`
+                        : "") +
+                      `*Términos y Condiciones:*\n${order.termsAndConditions || "No se especificaron términos y condiciones."}\n\n` +
+                      `Muchas gracias por su preferencia.\n` +
+                      `Atentamente, BLACKSTREAMING`
                   );
 
-                  // Normalizar el número de teléfono del proveedor para WhatsApp
                   const normalizedProviderPhone = order.providerPhone
                     ? order.providerPhone.replace(/^\+51/, "").replace(/\D/g, "")
                     : "51999999999";
@@ -777,24 +748,39 @@ const DashboardUser = () => {
                           >
                             {isOnDemand
                               ? "Pendiente de activación"
-                              : `${daysRemaining} día${daysRemaining === 1 ? "" : "s"} restante${daysRemaining === 1 ? "" : "s"}`}
+                              : `${daysRemaining} día${daysRemaining === 1 ? "" : "s"} restante${
+                                  daysRemaining === 1 ? "" : "s"
+                                }`}
                           </p>
                         </div>
                       </div>
 
                       <div className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                          {/* Sección de Detalles de la Cuenta */}
                           <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiUser className="mr-2" /> Detalles de la Cuenta
                             </h5>
                             <div className="space-y-2 text-gray-300">
                               {isOnDemand ? (
-                                <p className="text-gray-400">
-                                  Este pedido está "A pedido". El proveedor se contactará contigo para
-                                  proporcionarte los detalles.
-                                </p>
+                                <>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Usuario:</span>
+                                    <span className="block text-white">Por completar</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Contraseña:</span>
+                                    <span className="block text-white">Por completar</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">Perfil:</span>
+                                    <span className="block text-white">Por completar</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">PIN:</span>
+                                    <span className="block text-white">Por completar</span>
+                                  </p>
+                                </>
                               ) : (
                                 <>
                                   <p>
@@ -815,12 +801,17 @@ const DashboardUser = () => {
                                       {order.account?.profile || "No especificado"}
                                     </span>
                                   </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">PIN:</span>
+                                    <span className="block text-white">
+                                      {order.account?.pin || "No especificado"}
+                                    </span>
+                                  </p>
                                 </>
                               )}
                             </div>
                           </div>
 
-                          {/* Sección de Información del Pedido y Proveedor */}
                           <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiFileText className="mr-2" /> Información del Pedido
@@ -869,7 +860,6 @@ const DashboardUser = () => {
                             </div>
                           </div>
 
-                          {/* Sección de Información del Cliente */}
                           <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
                             <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
                               <FiUser className="mr-2" /> Información del Cliente
@@ -889,7 +879,6 @@ const DashboardUser = () => {
                           </div>
                         </div>
 
-                        {/* Botones de acción */}
                         <div className="flex flex-col sm:flex-row gap-3">
                           <a
                             href={`https://wa.me/51${normalizedProviderPhone}?text=${whatsappProviderMessage}`}
@@ -900,21 +889,23 @@ const DashboardUser = () => {
                             <FiMessageCircle size={18} /> Contactar Proveedor
                           </a>
 
-                          <button
-                            onClick={() => handleRenewal(order)}
-                            disabled={loading}
-                            className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
-                              loading
-                                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                                : "bg-cyan-500 hover:bg-cyan-600 text-white"
-                            }`}
-                          >
-                            <FiRefreshCw size={18} /> Renovar Pedido
-                          </button>
+                          {order.renewable && (
+                            <button
+                              onClick={() => handleRenewal(order)}
+                              disabled={loading}
+                              className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
+                                loading
+                                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                                  : "bg-cyan-500 hover:bg-cyan-600 text-white"
+                              }`}
+                            >
+                              <FiRefreshCw size={18} /> Renovar Pedido
+                            </button>
+                          )}
 
                           {order.client?.phone && (
                             <a
-                              href={`https://wa.me/${order.client.phone}?text=${whatsappClientMessage}`}
+                              href={`https://wa.me/${order.client.phone.replace(/^\+/, "")}?text=${whatsappClientMessage}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
@@ -1016,7 +1007,6 @@ const DashboardUser = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
-      {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -1026,7 +1016,6 @@ const DashboardUser = () => {
         </button>
       </div>
 
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 transform ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
@@ -1114,10 +1103,8 @@ const DashboardUser = () => {
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">{renderContent()}</main>
 
-      {/* Modal for Alerts */}
       {modal.show && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
@@ -1145,7 +1132,6 @@ const DashboardUser = () => {
         </div>
       )}
 
-      {/* Overlay for mobile menu */}
       {menuOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"

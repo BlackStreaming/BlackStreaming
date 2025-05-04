@@ -3,7 +3,7 @@ import {
   FiHome, FiBox, FiUpload, FiDollarSign, FiSettings,
   FiLogOut, FiMenu, FiEdit2, FiTrash2, FiPlus,
   FiCheck, FiX, FiUser, FiCreditCard, FiShoppingCart,
-  FiClock, FiAlertCircle, FiX as FiClose
+  FiClock, FiAlertCircle, FiX as FiClose, FiCheckCircle
 } from "react-icons/fi";
 import {
   collection, addDoc, query, where, onSnapshot,
@@ -27,15 +27,18 @@ const DashboardProvider = () => {
   const [product, setProduct] = useState({
     image: "",
     category: "Netflix",
+    accountType: "Premium",
     name: "",
     price: "",
+    renewal: false,
+    renewalPrice: "",
     stock: 1,
     duration: "",
     providerPhone: "",
     details: "",
     terms: "",
     status: "En stock",
-    accounts: Array(1).fill({ email: "", password: "", profile: "" }),
+    accounts: Array(1).fill({ email: "", password: "", profile: "", pin: "" }),
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -53,6 +56,10 @@ const DashboardProvider = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [balanceLoading, setBalanceLoading] = useState(true);
+  const [providerBalance, setProviderBalance] = useState(0);
+  const [editOrderModalOpen, setEditOrderModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [editOrderError, setEditOrderError] = useState("");
 
   const navigate = useNavigate();
   const auth = getAuth();
@@ -191,7 +198,7 @@ const DashboardProvider = () => {
           date: data.saleDate ? data.saleDate : data.createdAt || new Date(),
           amount: parseFloat(data.price) || 0,
           status: data.status || "completed",
-          accountDetails: data.accountDetails || { email: "No disponible", password: "No disponible", profile: "N/A" },
+          accountDetails: data.accountDetails || { email: "No disponible", password: "No disponible", profile: "N/A", pin: "" },
         };
       });
       setOrders(fetchedSales);
@@ -225,7 +232,8 @@ const DashboardProvider = () => {
       setWithdrawals(fetchedWithdrawals);
       setBalanceLoading(false);
     }, (err) => {
-      
+      console.error("Error fetching withdrawals:", err);
+      setError("Error al cargar retiros");
     });
     return () => unsubscribe();
   }, [username]);
@@ -255,6 +263,25 @@ const DashboardProvider = () => {
     return () => unsubscribe();
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!username) return;
+    const balanceDocRef = doc(db, "providerBalances", username);
+    const unsubscribe = onSnapshot(balanceDocRef, (doc) => {
+      if (doc.exists()) {
+        setProviderBalance(doc.data().balance || 0);
+      } else {
+        setDoc(balanceDocRef, { balance: 0, provider: username, updatedAt: serverTimestamp() });
+        setProviderBalance(0);
+      }
+      setBalanceLoading(false);
+    }, (err) => {
+      console.error("Error fetching provider balance:", err);
+      setError("Error al cargar el saldo del proveedor");
+      setBalanceLoading(false);
+    });
+    return () => unsubscribe();
+  }, [username]);
+
   const handleLogout = () => {
     signOut(auth)
       .then(() => navigate("/login"))
@@ -265,8 +292,11 @@ const DashboardProvider = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProduct((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setProduct((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleAccountChange = (e) => {
@@ -304,7 +334,7 @@ const DashboardProvider = () => {
     if (newStock > currentAccounts.length) {
       const newAccounts = [...currentAccounts];
       while (newAccounts.length < newStock) {
-        newAccounts.push({ email: "", password: "", profile: "" });
+        newAccounts.push({ email: "", password: "", profile: "", pin: "" });
       }
       setProduct({ ...product, stock: newStock, accounts: newAccounts });
     } else if (newStock < currentAccounts.length) {
@@ -321,7 +351,7 @@ const DashboardProvider = () => {
     let newAccounts = [...currentAccounts];
     if (newStock > newAccounts.length) {
       while (newAccounts.length < newStock) {
-        newAccounts.push({ email: "", password: "", profile: "" });
+        newAccounts.push({ email: "", password: "", profile: "", pin: "" });
       }
     } else if (newStock < newAccounts.length) {
       newAccounts = newAccounts.slice(0, Math.max(newStock, 1));
@@ -344,8 +374,24 @@ const DashboardProvider = () => {
     }));
   };
 
+  const handleOrderAccountChange = (e) => {
+    const { name, value } = e.target;
+    setSelectedOrder((prev) => ({
+      ...prev,
+      accountDetails: { ...prev.accountDetails, [name]: value },
+    }));
+  };
+
   const handleSubmit = async () => {
     setError("");
+    if (!product.name || !product.price) {
+      setError("Por favor complete todos los campos obligatorios");
+      return;
+    }
+    if (product.renewal && !product.renewalPrice) {
+      setError("Por favor ingrese el precio de renovación");
+      return;
+    }
     if (product.status === "En stock") {
       const hasEmptyAccounts = product.accounts.some((acc) => !acc.email || !acc.password);
       if (hasEmptyAccounts) {
@@ -372,6 +418,7 @@ const DashboardProvider = () => {
             email: account.email,
             password: account.password,
             profile: account.profile || "",
+            pin: account.pin || "",
             status: "available",
           });
         }
@@ -380,15 +427,18 @@ const DashboardProvider = () => {
       setProduct({
         image: "",
         category: "Netflix",
+        accountType: "Premium",
         name: "",
         price: "",
+        renewal: false,
+        renewalPrice: "",
         stock: 1,
         duration: "",
         providerPhone: "",
         details: "",
         terms: "",
         status: "En stock",
-        accounts: [{ email: "", password: "", profile: "" }],
+        accounts: [{ email: "", password: "", profile: "", pin: "" }],
       });
 
       setActiveSection("inventario");
@@ -404,15 +454,26 @@ const DashboardProvider = () => {
     setSelectedProduct({
       ...product,
       accounts: product.status === "En stock" 
-        ? (product.accounts || Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "" }))
+        ? (product.accounts || Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "", pin: "" }))
         : [],
       providerId: product.providerId || uid,
+      accountType: product.accountType || "Premium",
+      renewal: product.renewal || false,
+      renewalPrice: product.renewalPrice || "",
     });
     setEditModalOpen(true);
   };
 
   const handleUpdateProduct = async () => {
     setEditError("");
+    if (!selectedProduct.name || !selectedProduct.price) {
+      setEditError("Por favor complete todos los campos obligatorios");
+      return;
+    }
+    if (selectedProduct.renewal && !selectedProduct.renewalPrice) {
+      setEditError("Por favor ingrese el precio de renovación");
+      return;
+    }
     if (selectedProduct.status === "En stock") {
       const hasEmptyAccounts = selectedProduct.accounts.some((acc) => !acc.email || !acc.password);
       if (hasEmptyAccounts) {
@@ -454,8 +515,6 @@ const DashboardProvider = () => {
         await setDoc(
           userRef,
           {
-            username,
-            email: accountDetails.email,
             preferences: accountDetails.preferences,
             ...(accountDetails.password && { password: accountDetails.password }),
           },
@@ -474,8 +533,7 @@ const DashboardProvider = () => {
       setError("Ingrese un monto válido");
       return;
     }
-    const availableBalance = calculateAvailableBalance();
-    if (parseFloat(withdrawAmount) > availableBalance) {
+    if (parseFloat(withdrawAmount) > providerBalance) {
       setError("No tienes suficientes fondos disponibles");
       return;
     }
@@ -505,24 +563,86 @@ const DashboardProvider = () => {
   const handleWithdrawAction = async (withdrawalId, action) => {
     try {
       const withdrawalRef = doc(db, "withdrawals", withdrawalId);
+      const withdrawalDoc = await getDoc(withdrawalRef);
+      if (!withdrawalDoc.exists()) {
+        throw new Error("Solicitud de retiro no encontrada");
+      }
+      const withdrawalData = withdrawalDoc.data();
+      const provider = withdrawalData.provider;
+      const amount = parseFloat(withdrawalData.amount);
+
+      if (action === "approved") {
+        const balanceDocRef = doc(db, "providerBalances", provider);
+        const balanceDoc = await getDoc(balanceDocRef);
+        let currentBalance = 0;
+        if (balanceDoc.exists()) {
+          currentBalance = balanceDoc.data().balance || 0;
+        }
+        if (amount > currentBalance) {
+          setError("El proveedor no tiene suficientes fondos para aprobar este retiro");
+          return;
+        }
+        await setDoc(balanceDocRef, {
+          balance: currentBalance - amount,
+          provider,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
       await updateDoc(withdrawalRef, {
         status: action,
         processedAt: serverTimestamp(),
         processedBy: email,
       });
+
       setSuccessModal({ 
         open: true, 
-        message: action === "approved" ? "Retiro aprobado correctamente" : "Retiro rechazado" 
+        message: action === "approved" ? "Retiro aprobado y saldo actualizado correctamente" : "Retiro rechazado" 
       });
     } catch (error) {
       console.error("Error al procesar retiro:", error);
-      setError("Error al procesar retiro");
+      setError("Error al procesar retiro: " + error.message);
+    }
+  };
+
+  const handleEditOrder = (order) => {
+    setEditOrderError("");
+    setSelectedOrder({
+      ...order,
+      accountDetails: {
+        email: order.accountDetails.email || "",
+        password: order.accountDetails.password || "",
+        profile: order.accountDetails.profile || "",
+        pin: order.accountDetails.pin || "",
+      },
+    });
+    setEditOrderModalOpen(true);
+  };
+
+  const handleUpdateOrder = async () => {
+    setEditOrderError("");
+    if (!selectedOrder.accountDetails.email || !selectedOrder.accountDetails.password) {
+      setEditOrderError("Por favor complete todos los campos obligatorios de la cuenta");
+      return;
+    }
+
+    try {
+      const orderRef = doc(db, "sales", selectedOrder.id);
+      await updateDoc(orderRef, {
+        accountDetails: selectedOrder.accountDetails,
+        updatedAt: serverTimestamp(),
+      });
+      setEditOrderModalOpen(false);
+      setSuccessModal({ open: true, message: "Detalles de la cuenta actualizados exitosamente!" });
+    } catch (error) {
+      console.error("Error al actualizar los detalles de la cuenta:", error);
+      setEditOrderError("Error al actualizar los detalles de la cuenta");
     }
   };
 
   const totalEarnings = balanceLoading ? 0 : orders.reduce((total, order) => total + (order.amount || 0), 0);
   const totalWithdrawn = balanceLoading ? 0 : withdrawals.reduce((total, withdrawal) => total + (withdrawal.status === "approved" ? withdrawal.amount : 0), 0);
-  const calculateAvailableBalance = () => balanceLoading ? 0 : totalEarnings - totalWithdrawn;
+  const calculateAvailableBalance = () => balanceLoading ? 0 : providerBalance;
   const availableBalance = calculateAvailableBalance();
   const totalStock = products.reduce((total, product) => total + (parseInt(product.stock) || 0), 0);
 
@@ -853,8 +973,23 @@ const DashboardProvider = () => {
                         <option value="Licencias">Licencias</option>
                         <option value="Capcut">Capcut</option>
                         <option value="Duolingo">Duolingo</option>
-                        <option value="BuscaPersonas">BuscaPersonas</option>                      </select>
+                        <option value="BuscaPersonas">BuscaPersonas</option>
+                      </select>
                     </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Tipo de cuenta*</label>
+                      <select
+                        name="accountType"
+                        value={product.accountType}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                      >
+                        <option value="Premium">Premium</option>
+                        <option value="Standard">Standard</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-300 mb-2">Estado*</label>
                       <select
@@ -866,6 +1001,18 @@ const DashboardProvider = () => {
                         <option value="En stock">En stock</option>
                         <option value="A pedido">A pedido</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Stock*</label>
+                      <input
+                        type="number"
+                        name="stock"
+                        value={product.stock}
+                        onChange={handleStockChange}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                        min="1"
+                        required
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -883,19 +1030,33 @@ const DashboardProvider = () => {
                         required
                       />
                     </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="renewal"
+                        checked={product.renewal}
+                        onChange={handleChange}
+                        className="h-4 w-4 text-cyan-400 focus:ring cyan-400 border-gray-600/50 rounded"
+                      />
+                      <label className="ml-2 text-gray-300">¿Tiene renovación?</label>
+                    </div>
+                  </div>
+                  {product.renewal && (
                     <div>
-                      <label className="block text-gray-300 mb-2">Stock*</label>
+                      <label className="block text-gray-300 mb-2">Precio de renovación (S/)*</label>
                       <input
                         type="number"
-                        name="stock"
-                        value={product.stock}
-                        onChange={handleStockChange}
-                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                        min="1"
+                        name="renewalPrice"
+                        value={product.renewalPrice}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                        placeholder="Ej: 8.99"
+                        step="0.01"
+                        min="0"
                         required
                       />
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -954,7 +1115,7 @@ const DashboardProvider = () => {
                     {product.accounts.map((account, index) => (
                       <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
                         <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
                             <input
@@ -983,6 +1144,16 @@ const DashboardProvider = () => {
                               onChange={(e) => handleAccountFieldChange(index, "profile", e.target.value)}
                               className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                               placeholder="Ej: Perfil 1"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">PIN (opcional)</label>
+                            <input
+                              type="text"
+                              value={account.pin}
+                              onChange={(e) => handleAccountFieldChange(index, "pin", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                              placeholder="Ej: 1234"
                             />
                           </div>
                         </div>
@@ -1098,9 +1269,16 @@ const DashboardProvider = () => {
                             <p className="text-xs text-gray-400">Categoría: {getCategoryDisplayName(order.category)}</p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex items-center space-x-2">
                           <p className="text-sm font-medium text-white">S/ {(order.amount || 0).toFixed(2)}</p>
                           <p className="text-xs text-gray-400">{formatDate(order.date)}</p>
+                          <button
+                            onClick={() => handleEditOrder(order)}
+                            className="text-cyan-400 hover:text-cyan-500"
+                            title="Editar cuenta"
+                          >
+                            <FiEdit2 />
+                          </button>
                         </div>
                       </div>
                       <div className="p-4">
@@ -1142,6 +1320,10 @@ const DashboardProvider = () => {
                                   <p>
                                     <span className="font-medium text-gray-400">Perfil:</span> 
                                     <span className="block text-white">{order.accountDetails.profile || "N/A"}</span>
+                                  </p>
+                                  <p>
+                                    <span className="font-medium text-gray-400">PIN:</span> 
+                                    <span className="block text-white">{order.accountDetails.pin || "N/A"}</span>
                                   </p>
                                 </>
                               ) : (
@@ -1351,24 +1533,22 @@ const DashboardProvider = () => {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-gray-300 mb-2">Nombre de usuario*</label>
+                <label className="block text-gray-300 mb-2">Nombre de usuario</label>
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  required
+                  disabled
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 transition-all cursor-not-allowed"
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-2">Correo electrónico*</label>
+                <label className="block text-gray-300 mb-2">Correo electrónico</label>
                 <input
                   type="email"
                   name="email"
                   value={accountDetails.email}
-                  onChange={handleAccountChange}
-                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  required
+                  disabled
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 transition-all cursor-not-allowed"
                 />
               </div>
               <div>
@@ -1388,434 +1568,532 @@ const DashboardProvider = () => {
                   name="preferences"
                   value={accountDetails.preferences}
                   onChange={handleAccountChange}
-                  rows="3"
-                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  placeholder="Tus preferencias y configuraciones"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                  placeholder="Escribe tus preferencias o notas"
+                  rows="4"
                 ></textarea>
               </div>
-              <button
-                onClick={handleUpdateAccount}
-                className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium transition-all duration-300"
-              >
-                Guardar cambios
-              </button>
-            </div>
-            <div className="mt-8 border-t border-gray-600/50 pt-6">
-              <button
-                onClick={handleLogout}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900/80 hover:bg-red-800 text-white rounded-xl font-medium transition-all duration-300"
-              >
-                <FiLogOut /> Cerrar sesión
-              </button>
+              {error && (
+                <div className="bg-red-900/80 border-l-4 border-red-500 p-4 rounded-xl">
+                  <div className="flex">
+                    <FiAlertCircle className="h-5 w-5 text-red-400" />
+                    <p className="ml-3 text-sm text-red-300">{error}</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={handleUpdateAccount}
+                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
             </div>
           </div>
         );
 
       default:
-        return (
-          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
-            <FiAlertCircle className="mx-auto text-4xl text-yellow-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
-            <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
-            <button
-              onClick={() => setActiveSection('inicio')}
-              className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
-            >
-              Volver al inicio
-            </button>
-          </div>
-        );
+        return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-full bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 border border-gray-700/50"
-        >
-          <FiMenu className="text-xl" />
-        </button>
-      </div>
+  const menuItems = [
+    { id: "inicio", label: "Inicio", icon: <FiHome /> },
+    { id: "inventario", label: "Inventario", icon: <FiBox /> },
+    { id: "subirProducto", label: "Subir Producto", icon: <FiUpload /> },
+    { id: "ganancias", label: "Ganancias", icon: <FiDollarSign /> },
+    { id: "pedidos", label: "Pedidos", icon: <FiShoppingCart /> },
+    { id: "retiros", label: "Retiros", icon: <FiCreditCard /> },
+    { id: "configuracion", label: "Configuración", icon: <FiSettings /> },
+  ];
 
-      <aside className={`fixed inset-y-0 left-0 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}>
-        <div className="p-4 flex flex-col h-full">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
-            <button
-              onClick={() => setMenuOpen(false)}
-              className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
-            >
-              <FiClose className="text-lg" />
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      <div className="flex h-screen">
+        {/* Sidebar */}
+        <div
+          className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-800/50 backdrop-blur-sm transform ${
+            menuOpen ? "translate-x-0" : "-translate-x-full"
+          } md:translate-x-0 transition-transform duration-300 ease-in-out border-r border-gray-700/50`}
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+            <h1 className="text-xl font-bold text-cyan-400">Panel de Proveedor</h1>
+            <button onClick={() => setMenuOpen(false)} className="md:hidden text-gray-300 hover:text-white">
+              <FiClose size={24} />
             </button>
           </div>
-          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50">
-            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
-              {username.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-medium text-white truncate">{username}</p>
-              <p className="text-xs text-gray-400 truncate">{email}</p>
-              <p className="text-xs mt-2 bg-cyan-900 text-cyan-400 py-1 px-2 rounded-full inline-block">
-                {isAdmin ? "Administrador" : "Proveedor"}
-              </p>
-            </div>
-          </div>
-          <nav className="flex-1 space-y-1">
-            <button
-              onClick={() => { setActiveSection("inicio"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "inicio" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiHome /> <span>Inicio</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("inventario"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "inventario" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiBox /> <span>Inventario</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("subirProducto"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "subirProducto" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiUpload /> <span>Subir Producto</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("ganancias"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "ganancias" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiDollarSign /> <span>Ganancias</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("pedidos"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "pedidos" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiShoppingCart /> <span>Pedidos</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("retiros"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "retiros" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiCreditCard /> <span>Retiros</span>
-            </button>
-            <button
-              onClick={() => { setActiveSection("configuracion"); setMenuOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${activeSection === "configuracion" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"}`}
-            >
-              <FiSettings /> <span>Configuración</span>
-            </button>
-          </nav>
-          <div className="mt-auto pt-4">
+          <nav className="mt-4">
+            {menuItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  setMenuOpen(false);
+                }}
+                className={`w-full flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 ${
+                  activeSection === item.id
+                    ? "bg-cyan-500/20 text-cyan-400 border-l-4 border-cyan-400"
+                    : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                }`}
+              >
+                {item.icon}
+                <span className="ml-3">{item.label}</span>
+              </button>
+            ))}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700/50 transition-all duration-300"
+              className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-300"
             >
-              <FiLogOut /> <span>Cerrar sesión</span>
+              <FiLogOut className="mr-3" />
+              Cerrar Sesión
             </button>
-          </div>
+          </nav>
         </div>
-      </aside>
 
-      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">
-        {renderContent()}
-      </main>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col md:ml-64">
+          <header className="bg-gray-800/50 backdrop-blur-sm p-4 flex justify-between items-center border-b border-gray-700/50">
+            <button onClick={() => setMenuOpen(true)} className="md:hidden text-gray-300 hover:text-white">
+              <FiMenu size={24} />
+            </button>
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 rounded-full bg-gray-700/50 flex items-center justify-center">
+                <FiUser className="text-gray-300" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{username}</p>
+                <p className="text-xs text-gray-400">{email}</p>
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+            {renderContent()}
+          </main>
+        </div>
+      </div>
 
-      {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
-          onClick={() => setMenuOpen(false)}
-        ></div>
-      )}
-
+      {/* Edit Product Modal */}
       {editModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-800/50">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Editar Producto</h3>
-                <button
-                  onClick={() => setEditModalOpen(false)}
-                  className="text-gray-400 hover:text-white transition-all duration-300"
-                >
-                  <FiClose size={24} />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-700/50">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center">
+                <FiEdit2 className="mr-2" /> Editar Producto
+              </h3>
+              <button onClick={() => setEditModalOpen(false)} className="text-gray-300 hover:text-white">
+                <FiClose size={24} />
+              </button>
+            </div>
+            {editError && (
+              <div className="bg-red-900/80 border-l-4 border-red-500 p-4 mb-6 rounded-xl">
+                <div className="flex">
+                  <FiAlertCircle className="h-5 w-5 text-red-400" />
+                  <p className="ml-3 text-sm text-red-300">{editError}</p>
                 </div>
-              {editError && (
-                <div className="bg-red-900/80 border-l-4 border-red-500 p-4 mb-6 rounded-xl">
-                  <div className="flex">
-                    <FiAlertCircle className="h-5 w-5 text-red-400" />
-                    <p className="ml-3 text-sm text-red-300">{editError}</p>
+              </div>
+            )}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="col-span-1">
+                  <label className="block text-gray-300 mb-2">Imagen del producto</label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600/50 border-dashed rounded-xl bg-gray-700/50 backdrop-blur-sm">
+                    {selectedProduct?.image ? (
+                      <div className="relative">
+                        <img src={selectedProduct.image} alt="Preview" className="mx-auto h-48 w-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <FiX size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="flex text-sm text-gray-400 justify-center">
+                          <label
+                            htmlFor="edit-file-upload"
+                            className="relative cursor-pointer bg-gray-800/50 rounded-xl font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
+                          >
+                            <span>Subir una imagen</span>
+                            <input
+                              id="edit-file-upload"
+                              name="edit-file-upload"
+                              type="file"
+                              className="sr-only"
+                              onChange={(e) => handleFileChange(e, true)}
+                              accept="image/*"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF hasta 10MB</p>
+                      </>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="col-span-1">
-                    <label className="block text-gray-300 mb-2">Imagen del producto</label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600/50 border-dashed rounded-xl bg-gray-700/50 backdrop-blur-sm">
-                      {selectedProduct.image ? (
-                        <div className="relative">
-                          <img src={selectedProduct.image} alt="Preview" className="mx-auto h-48 w-full object-contain" />
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
-                            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                          >
-                            <FiX size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <svg
-                            className="mx-auto h-12 w-12 text-gray-400"
-                            stroke="currentColor"
-                            fill="none"
-                            viewBox="0 0 48 48"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          <div className="flex text-sm text-gray-400 justify-center">
-                            <label
-                              htmlFor="edit-file-upload"
-                              className="relative cursor-pointer bg-gray-800/50 rounded-xl font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
-                            >
-                              <span>Subir una imagen</span>
-                              <input
-                                id="edit-file-upload"
-                                name="edit-file-upload"
-                                type="file"
-                                className="sr-only"
-                                onChange={(e) => handleFileChange(e, true)}
-                                accept="image/*"
-                              />
-                            </label>
-                          </div>
-                          <p className="text-xs text-gray-500">PNG, JPG, GIF hasta 10MB</p>
-                        </>
-                      )}
+                <div className="col-span-1 space-y-4">
+                  <div>
+                    <label className="block text-gray-300 mb-2">Nombre del producto*</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={selectedProduct?.name || ""}
+                      onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                      placeholder="Ej: Netflix Premium 1 mes"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Categoría*</label>
+                      <select
+                        name="category"
+                        value={selectedProduct?.category || "Netflix"}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                      >
+                        <option value="Netflix">Netflix</option>
+                        <option value="Spotify">Spotify</option>
+                        <option value="Disney">Disney+</option>
+                        <option value="Max">Max</option>
+                        <option value="Prime Video">Prime Video</option>
+                        <option value="Vix">Vix</option>
+                        <option value="Crunchyroll">Crunchyroll</option>
+                        <option value="Canva">Canva</option>
+                        <option value="ChatGPT">ChatGPT</option>
+                        <option value="Redes Sociales">Redes Sociales</option>
+                        <option value="Dgo">DGO</option>
+                        <option value="Liga Max">Liga Max</option>
+                        <option value="Movistar Play">Movistar Play</option>
+                        <option value="Youtube">YouTube</option>
+                        <option value="Deezer">Deezer</option>
+                        <option value="Tidal">Tidal</option>
+                        <option value="Vpn">VPN</option>
+                        <option value="WinTv">WinTV</option>
+                        <option value="Apple Music">Apple Music</option>
+                        <option value="Apple Tv">Apple TV</option>
+                        <option value="Iptv">IPTV</option>
+                        <option value="Flujo Tv">Flujo TV</option>
+                        <option value="Viki Rakuten">Viki Rakuten</option>
+                        <option value="Pornhub">Pornhub</option>
+                        <option value="Paramount">Paramount</option>
+                        <option value="Licencias">Licencias</option>
+                        <option value="Capcut">Capcut</option>
+                        <option value="Duolingo">Duolingo</option>
+                        <option value="BuscaPersonas">BuscaPersonas</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Tipo de cuenta*</label>
+                      <select
+                        name="accountType"
+                        value={selectedProduct?.accountType || "Premium"}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, accountType: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                      >
+                        <option value="Premium">Premium</option>
+                        <option value="Standard">Standard</option>
+                      </select>
                     </div>
                   </div>
-                  <div className="col-span-1 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-gray-300 mb-2">Nombre del producto*</label>
+                      <label className="block text-gray-300 mb-2">Estado*</label>
+                      <select
+                        name="status"
+                        value={selectedProduct?.status || "En stock"}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                      >
+                        <option value="En stock">En stock</option>
+                        <option value="A pedido">A pedido</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">Stock*</label>
                       <input
-                        type="text"
-                        name="name"
-                        value={selectedProduct.name}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
-                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                        placeholder="Ej: Netflix Premium 1 mes"
+                        type="number"
+                        name="stock"
+                        value={selectedProduct?.stock || 1}
+                        onChange={handleEditStockChange}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                        min="1"
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">Categoría*</label>
-                        <select
-                          name="category"
-                          value={selectedProduct.category}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                        >
-                          <option value="Netflix">Netflix</option>
-                          <option value="Spotify">Spotify</option>
-                          <option value="Disney">Disney+</option>
-                          <option value="Max">Max</option>
-                          <option value="Prime Video">Prime Video</option>
-                          <option value="Vix">Vix</option>
-                          <option value="Crunchyroll">Crunchyroll</option>
-                          <option value="Canva">Canva</option>
-                          <option value="ChatGPT">ChatGPT</option>
-                          <option value="Redes Sociales">Redes Sociales</option>
-                          <option value="Dgo">DGO</option>
-                          <option value="Liga Max">Liga Max</option>
-                          <option value="Movistar Play">Movistar Play</option>
-                          <option value="Youtube">YouTube</option>
-                          <option value="Deezer">Deezer</option>
-                          <option value="Tidal">Tidal</option>
-                          <option value="Vpn">VPN</option>
-                          <option value="WinTv">WinTV</option>
-                          <option value="Apple Music">Apple Music</option>
-                          <option value="Apple Tv">Apple TV</option>
-                          <option value="Iptv">IPTV</option>
-                          <option value="Flujo Tv">Flujo TV</option>
-                          <option value="Viki Rakuten">Viki Rakuten</option>
-                          <option value="Pornhub">Pornhub</option>
-                          <option value="Paramount">Paramount</option>
-                          <option value="Licencias">Licencias</option>
-                          <option value="Capcut">Capcut</option>
-                          <option value="Duolingo">Duolingo</option>
-                          <option value="BuscaPersonas">BuscaPersonas</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Estado*</label>
-                        <select
-                          name="status"
-                          value={selectedProduct.status}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                        >
-                          <option value="En stock">En stock</option>
-                          <option value="A pedido">A pedido</option>
-                        </select>
-                      </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Precio (S/)*</label>
+                      <input
+                        type="number"
+                        name="price"
+                        value={selectedProduct?.price || ""}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                        placeholder="Ej: 9.99"
+                        step="0.01"
+                        min="0"
+                        required
+                      />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-300 mb-2">Precio (S/)*</label>
-                        <input
-                          type="number"
-                          name="price"
-                          value={selectedProduct.price}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
-                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                          placeholder="Ej: 9.99"
-                          step="0.01"
-                          min="0"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-300 mb-2">Stock*</label>
-                        <input
-                          type="number"
-                          name="stock"
-                          value={selectedProduct.stock}
-                          onChange={handleEditStockChange}
-                          className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                          min="1"
-                          required
-                        />
-                      </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="renewal"
+                        checked={selectedProduct?.renewal || false}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, renewal: e.target.checked })}
+                        className="h-4 w-4 text-cyan-400 focus:ring cyan-400 border-gray-600/50 rounded"
+                      />
+                      <label className="ml-2 text-gray-300">¿Tiene renovación?</label>
                     </div>
                   </div>
+                  {selectedProduct?.renewal && (
+                    <div>
+                      <label className="block text-gray-300 mb-2">Precio de renovación (S/)*</label>
+                      <input
+                        type="number"
+                        name="renewalPrice"
+                        value={selectedProduct?.renewalPrice || ""}
+                        onChange={(e) => setSelectedProduct({ ...selectedProduct, renewalPrice: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                        placeholder="Ej: 8.99"
+                        step="0.01"
+                        min="0"
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-300 mb-2">Duración (días)</label>
-                    <input
-                      type="number"
-                      name="duration"
-                      value={selectedProduct.duration}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                      placeholder="Dejar vacío para ilimitado"
-                      min="1"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 mb-2">Teléfono de contacto {selectedProduct.status === "A pedido" ? "*" : ""}</label>
-                    <input
-                      type="text"
-                      name="providerPhone"
-                      value={selectedProduct.providerPhone}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                      placeholder="Ej: +51 987654321"
-                      required={selectedProduct.status === "A pedido"}
-                    />
-                  </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-gray-300 mb-2">Duración (días)</label>
+                  <input
+                    type="number"
+                    name="duration"
+                    value={selectedProduct?.duration || ""}
+                    onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                    placeholder="Dejar vacío para ilimitado"
+                    min="1"
+                  />
                 </div>
                 <div>
-                  <label className="block text-gray-300 mb-2">Detalles del producto</label>
-                  <textarea
-                    name="details"
-                    value={selectedProduct.details}
-                    onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
-                    rows="3"
+                  <label className="block text-gray-300 mb-2">Teléfono de contacto {selectedProduct?.status === "A pedido" ? "*" : ""}</label>
+                  <input
+                    type="text"
+                    name="providerPhone"
+                    value={selectedProduct?.providerPhone || ""}
+                    onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
                     className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                    placeholder="Describe los detalles y características del producto"
-                  ></textarea>
+                    placeholder="Ej: +51 987654321"
+                    required={selectedProduct?.status === "A pedido"}
+                  />
                 </div>
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Detalles del producto</label>
+                <textarea
+                  name="details"
+                  value={selectedProduct?.details || ""}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
+                  rows="3"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                  placeholder="Describe los detalles y características del producto"
+                ></textarea>
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Términos y condiciones</label>
+                <textarea
+                  name="terms"
+                  value={selectedProduct?.terms || ""}
+                  onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
+                  rows="3"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
+                  placeholder="Especifica los términos y condiciones de uso"
+                ></textarea>
+              </div>
+              {selectedProduct?.status === "En stock" && (
                 <div>
-                  <label className="block text-gray-300 mb-2">Términos y condiciones</label>
-                  <textarea
-                    name="terms"
-                    value={selectedProduct.terms}
-                    onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
-                    rows="3"
-                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                    placeholder="Especifica los términos y condiciones de uso"
-                  ></textarea>
-                </div>
-                {selectedProduct.status === "En stock" && (
-                  <div>
-                    <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
-                    <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
-                    <div className="space-y-4">
-                      {selectedProduct.accounts.map((account, index) => (
-                        <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
-                          <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
-                              <input
-                                type="email"
-                                value={account.email}
-                                onChange={(e) => handleEditAccountFieldChange(index, "email", e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">Contraseña*</label>
-                              <input
-                                type="text"
-                                value={account.password}
-                                onChange={(e) => handleEditAccountFieldChange(index, "password", e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
-                                required
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-400 mb-1">Perfil (opcional)</label>
-                              <input
-                                type="text"
-                                value={account.profile}
-                                onChange={(e) => handleEditAccountFieldChange(index, "profile", e.target.value)}
-                                className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
-                                placeholder="Ej: Perfil 1"
-                              />
-                            </div>
+                  <label className="block text-gray-300 mb-2">Cuentas asociadas*</label>
+                  <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
+                  <div className="space-y-4">
+                    {selectedProduct?.accounts?.map((account, index) => (
+                      <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
+                        <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Correo electrónico*</label>
+                            <input
+                              type="email"
+                              value={account.email}
+                              onChange={(e) => handleEditAccountFieldChange(index, "email", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Contraseña*</label>
+                            <input
+                              type="text"
+                              value={account.password}
+                              onChange={(e) => handleEditAccountFieldChange(index, "password", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Perfil (opcional)</label>
+                            <input
+                              type="text"
+                              value={account.profile}
+                              onChange={(e) => handleEditAccountFieldChange(index, "profile", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                              placeholder="Ej: Perfil 1"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">PIN (opcional)</label>
+                            <input
+                              type="text"
+                              value={account.pin}
+                              onChange={(e) => handleEditAccountFieldChange(index, "pin", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
+                              placeholder="Ej: 1234"
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => setEditModalOpen(false)}
-                    className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-xl hover:bg-gray-600/50 transition-all duration-300"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleUpdateProduct}
-                    className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
-                  >
-                    Actualizar Producto
-                  </button>
                 </div>
+              )}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-xl hover:bg-gray-600/50 transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateProduct}
+                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
+                >
+                  Guardar Cambios
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Edit Order Modal */}
+      {editOrderModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-700/50">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center">
+                <FiEdit2 className="mr-2" /> Editar Detalles de Cuenta
+              </h3>
+              <button onClick={() => setEditOrderModalOpen(false)} className="text-gray-300 hover:text-white">
+                <FiClose size={24} />
+              </button>
+            </div>
+            {editOrderError && (
+              <div className="bg-red-900/80 border-l-4 border-red-500 p-4 mb-6 rounded-xl">
+                <div className="flex">
+                  <FiAlertCircle className="h-5 w-5 text-red-400" />
+                  <p className="ml-3 text-sm text-red-300">{editOrderError}</p>
+                </div>
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-300 mb-2">Correo electrónico*</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={selectedOrder?.accountDetails.email || ""}
+                  onChange={handleOrderAccountChange}
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Contraseña*</label>
+                <input
+                  type="text"
+                  name="password"
+                  value={selectedOrder?.accountDetails.password || ""}
+                  onChange={handleOrderAccountChange}
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Perfil (opcional)</label>
+                <input
+                  type="text"
+                  name="profile"
+                  value={selectedOrder?.accountDetails.profile || ""}
+                  onChange={handleOrderAccountChange}
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                  placeholder="Ej: Perfil 1"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">PIN (opcional)</label>
+                <input
+                  type="text"
+                  name="pin"
+                  value={selectedOrder?.accountDetails.pin || ""}
+                  onChange={handleOrderAccountChange}
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                  placeholder="Ej: 1234"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setEditOrderModalOpen(false)}
+                  className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-xl hover:bg-gray-600/50 transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateOrder}
+                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
       {successModal.open && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-800/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl max-w-md w-full mx-4 border border-gray-700/50">
             <div className="text-center">
-              <FiCheck className="mx-auto text-4xl text-green-400 mb-4" />
+              <FiCheckCircle className="mx-auto text-4xl text-green-400 mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">¡Éxito!</h3>
               <p className="text-gray-300 mb-4">{successModal.message}</p>
               <button

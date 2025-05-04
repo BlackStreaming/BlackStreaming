@@ -61,35 +61,35 @@ const featuredContent = [
 ];
 
 const platforms = [
-  { name: "Netflix", logo: netflixLogo, route: "/netflix" },
-  { name: "Spotify", logo: spotifyLogo, route: "/spotify" },
-  { name: "Disney+", logo: disneyLogo, route: "/disney" },
-  { name: "Max", logo: maxLogo, route: "/max" },
-  { name: "Prime Video", logo: primeVideoLogo, route: "/primevideo" },
-  { name: "Vix", logo: vixLogo, route: "/vix" },
-  { name: "Canva", logo: canvaLogo, route: "/canva" },
-  { name: "ChatGPT", logo: chatGPTLogo, route: "/chatgpt" },
-  { name: "Crunchyroll", logo: crunchyrollLogo, route: "/crunchyroll" },
-  { name: "Redes Sociales", logo: redesSocialesLogo, route: "/redessociales" },
-  { name: "Dgo", logo: dgoLogo, route: "/dgo" },
-  { name: "Liga Max", logo: ligaMaxLogo, route: "/ligamax" },
-  { name: "Movistar Play", logo: movistarPlayLogo, route: "/movistarplay" },
-  { name: "Youtube", logo: youtubeLogo, route: "/youtube" },
-  { name: "Deezer", logo: deezerLogo, route: "/deezer" },
-  { name: "Tidal", logo: tidalLogo, route: "/tidal" },
-  { name: "Vpn", logo: vpnLogo, route: "/vpn" },
-  { name: "Win Tv", logo: winTvLogo, route: "/wintv" },
-  { name: "Apple Music", logo: appleMusicLogo, route: "/applemusic" },
-  { name: "Apple Tv", logo: appleTvLogo, route: "/appletv" },
-  { name: "Iptv", logo: iptvLogo, route: "/iptv" },
-  { name: "Flujo Tv", logo: flujoTvLogo, route: "/flujotv" },
-  { name: "Viki Rakuten", logo: vikiRakutenLogo, route: "/vikirakuten" },
-  { name: "Pornhub", logo: pornhubLogo, route: "/pornhub" },
-  { name: "Paramount", logo: paramountLogo, route: "/paramount" },
-  { name: "Licencias", logo: licenciasLogo, route: "/licencias" },
-  { name: "Capcut", logo: capcutLogo, route: "/capcut" },
-  { name: "Duolingo", logo: duolingoLogo, route: "/duolingo" },
-  { name: "Busca Personas", logo: buscaPersonasLogo, route: "/buscapersonas" },
+  { name: "Netflix", logo: netflixLogo, route: "/netflix", color: "#E50914" },
+  { name: "Spotify", logo: spotifyLogo, route: "/spotify", color: "#1DB954" },
+  { name: "Disney+", logo: disneyLogo, route: "/disney", color: "#1C4ED8" },
+  { name: "Max", logo: maxLogo, route: "/max", color: "#B5179E" },
+  { name: "Prime Video", logo: primeVideoLogo, route: "/primevideo", color: "#00A8E1" },
+  { name: "Vix", logo: vixLogo, route: "/vix", color: "#FF5733" },
+  { name: "Canva", logo: canvaLogo, route: "/canva", color: "#00C4B4" },
+  { name: "ChatGPT", logo: chatGPTLogo, route: "/chatgpt", color: "#10A37F" },
+  { name: "Crunchyroll", logo: crunchyrollLogo, route: "/crunchyroll", color: "#F47521" },
+  { name: "Redes Sociales", logo: redesSocialesLogo, route: "/redessociales", color: "#3B5998" },
+  { name: "Dgo", logo: dgoLogo, route: "/dgo", color: "#4CAF50" },
+  { name: "Liga Max", logo: ligaMaxLogo, route: "/ligamax", color: "#FFD700" },
+  { name: "Movistar Play", logo: movistarPlayLogo, route: "/movistarplay", color: "#00ADEF" },
+  { name: "Youtube", logo: youtubeLogo, route: "/youtube", color: "#FF0000" },
+  { name: "Deezer", logo: deezerLogo, route: "/deezer", color: "#FEAA2D" },
+  { name: "Tidal", logo: tidalLogo, route: "/tidal", color: "#00C7B7" },
+  { name: "Vpn", logo: vpnLogo, route: "/vpn", color: "#4B0082" },
+  { name: "Win Tv", logo: winTvLogo, route: "/wintv", color: "#4682B4" },
+  { name: "Apple Music", logo: appleMusicLogo, route: "/applemusic", color: "#FA2C43" },
+  { name: "Apple Tv", logo: appleTvLogo, route: "/appletv", color: "#A3AAAE" },
+  { name: "Iptv", logo: iptvLogo, route: "/iptv", color: "#8B008B" },
+  { name: "Flujo Tv", logo: flujoTvLogo, route: "/flujotv", color: "#20B2AA" },
+  { name: "Viki Rakuten", logo: vikiRakutenLogo, route: "/vikirakuten", color: "#D81B60" },
+  { name: "Pornhub", logo: pornhubLogo, route: "/pornhub", color: "#FFA500" },
+  { name: "Paramount", logo: paramountLogo, route: "/paramount", color: "#0064D2" },
+  { name: "Licencias", logo: licenciasLogo, route: "/licencias", color: "#708090" },
+  { name: "Capcut", logo: capcutLogo, route: "/capcut", color: "#00CED1" },
+  { name: "Duolingo", logo: duolingoLogo, route: "/duolingo", color: "#58CC02" },
+  { name: "Busca Personas", logo: buscaPersonasLogo, route: "/buscapersonas", color: "#6A5ACD" },
 ];
 
 const Home = () => {
@@ -385,7 +385,8 @@ const Home = () => {
               <Link
                 to={platform.route}
                 key={index}
-                className="group relative overflow-hidden rounded-2xl bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 p-4 flex flex-col items-center shadow-xl border border-gray-700/50"
+                className="group relative overflow-hidden rounded-2xl bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 p-4 flex flex-col items-center shadow-xl"
+                style={{ border: `2px solid ${platform.color}`, backgroundColor: `${platform.color}10` }}
               >
                 <div className="w-20 h-20 md:w-24 md:h-24 mb-4 flex items-center justify-center">
                   <img

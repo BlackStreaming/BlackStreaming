@@ -149,7 +149,7 @@ const Max = () => {
             providerPhone: data.providerPhone || "",
             acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
-            type: data.type || "Premium",
+            accountType: data.accountType || "Premium", // Changed from 'type' to 'accountType'
             status: data.status || "En stock",
             image: data.image || "https://via.placeholder.com/300",
             renewal: data.renewal || false,
@@ -1245,7 +1245,7 @@ const Max = () => {
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
                           <FiTag className="text-purple-400" size={16} />
                           <span className="text-gray-400">
-                            {product.type || "Premium"}
+                            {product.accountType || "Premium"} {/* Changed from 'type' to 'accountType' */}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">

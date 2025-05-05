@@ -149,7 +149,7 @@ const PrimeVideo = () => {
             providerPhone: data.providerPhone || "",
             acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
-            type: data.type || "Standard",
+            accountType: data.accountType || "No especificado", // Fetch accountType from database
             status: data.status || "En stock",
             image: data.image || "https://via.placeholder.com/300",
             renewal: data.renewal || false,
@@ -580,6 +580,7 @@ const PrimeVideo = () => {
       accountDetails: product.accountDetails,
       provider: product.provider,
       terms: product.terms,
+      accountType: product.accountType, // Use accountType
     });
   };
 
@@ -588,6 +589,7 @@ const PrimeVideo = () => {
       name: product.name,
       terms: product.terms,
       provider: product.provider,
+      accountType: product.accountType, // Use accountType
     });
     setTermsModal(true);
   };
@@ -643,33 +645,38 @@ const PrimeVideo = () => {
   };
 
   const parseDurationToDays = (duration) => {
+    // Default to 30 days if duration is not specified or malformed
     if (!duration || typeof duration !== "string") return "30 días";
 
+    // Check for "mes/meses" format
     const monthMatch = duration.match(/(\d+)\s*(mes|meses)/i);
     if (monthMatch) {
       const months = parseInt(monthMatch[1], 10);
-      return `${months * 30} días`;
+      return `${months * 30} días`; // 1 month = 30 days
     }
 
+    // Check for "día/días" format
     const dayMatch = duration.match(/(\d+)\s*(día|días|dia|dias)/i);
     if (dayMatch) {
       const days = parseInt(dayMatch[1], 10);
       return `${days} días`;
     }
 
+    // Check for numeric value only (assume it's in days)
     const numericMatch = duration.match(/(\d+)/);
     if (numericMatch) {
       const days = parseInt(numericMatch[1], 10);
       return `${days} días`;
     }
 
+    // Default to 30 days if format is unrecognized
     return "30 días";
   };
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-200">
-        <FiLoader className="animate-spin text-5xl text-blue-400 mb-4" />
+        <FiLoader className="animate-spin text-5xl text-yellow-400 mb-4" />
         <p className="text-lg font-medium text-gray-300">Cargando...</p>
       </div>
     );
@@ -678,12 +685,12 @@ const PrimeVideo = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black p-4">
-        <FiAlertCircle className="text-5xl text-blue-400 mb-4" />
+        <FiAlertCircle className="text-5xl text-red-400 mb-4" />
         <p className="text-xl font-semibold text-white mb-2">Error</p>
         <p className="text-gray-300 mb-6 text-center max-w-md">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all shadow-lg"
+          className="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
         >
           Recargar
         </button>
@@ -704,7 +711,7 @@ const PrimeVideo = () => {
             </button>
             <Link to="/" className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-10 w-auto" />
-              <span className="text-xl font-semibold text-blue-400 hidden sm:block">
+              <span className="text-xl font-semibold text-yellow-400 hidden sm:block">
                 BlackStreaming
               </span>
             </Link>
@@ -714,13 +721,13 @@ const PrimeVideo = () => {
             <input
               type="text"
               placeholder="Buscar en Prime Video..."
-              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all placeholder-gray-500"
+              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               onClick={handleSearch}
-              className="absolute right-3 text-gray-400 hover:text-blue-400 transition-all"
+              className="absolute right-3 text-gray-400 hover:text-yellow-400 transition-all"
             >
               <FiSearch size={20} />
             </button>
@@ -730,7 +737,7 @@ const PrimeVideo = () => {
             {user ? (
               <div className="flex items-center space-x-2 md:space-x-4">
                 <span className="text-sm font-medium text-gray-300 hidden sm:flex items-center">
-                  <FiUser className="mr-2 text-blue-400" /> {user.name}
+                  <FiUser className="mr-2 text-yellow-400" /> {user.name}
                 </span>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-200 bg-gray-800/50 px-3 py-1 rounded-full">
@@ -741,14 +748,14 @@ const PrimeVideo = () => {
                     className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 transition-all"
                     title="Dashboard"
                   >
-                    <FiUser className="text-blue-400" size={20} />
+                    <FiUser className="text-yellow-400" size={20} />
                   </button>
                   <button
                     onClick={() => {
                       auth.signOut();
                       navigate("/");
                     }}
-                    className="flex items-center space-x-1 px-3 py-2 rounded-full bg-blue-600/80 hover:bg-blue-700 transition-all text-sm text-white"
+                    className="flex items-center space-x-1 px-3 py-2 rounded-full bg-yellow-600/80 hover:bg-yellow-700 transition-all text-sm text-white"
                   >
                     <FiLogOut size={18} />
                     <span className="hidden sm:inline">Salir</span>
@@ -759,13 +766,13 @@ const PrimeVideo = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-4 py-2 text-sm text-gray-200 hover:text-blue-400 transition-all"
+                  className="px-4 py-2 text-sm text-gray-200 hover:text-yellow-400 transition-all"
                 >
                   Ingresar
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-all text-sm"
+                  className="px-4 py-2 rounded-full bg-yellow-500 text-white hover:bg-yellow-600 transition-all text-sm"
                 >
                   Registrarse
                 </button>
@@ -783,7 +790,7 @@ const PrimeVideo = () => {
         >
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center p-4 md:hidden">
-              <span className="text-xl font-semibold text-blue-400">
+              <span className="text-xl font-semibold text-yellow-400">
                 BlackStreaming
               </span>
               <button
@@ -844,10 +851,10 @@ const PrimeVideo = () => {
               </Link>
               <Link
                 to="/primevideo"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-blue-600/30 text-white border border-blue-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-yellow-600/30 text-white border border-yellow-500/30"
               >
                 <div className="flex items-center space-x-2">
-                  <FiPlayCircle className="text-blue-500" />
+                  <FiPlayCircle className="text-yellow-500" />
                   <span>Prime Video</span>
                 </div>
                 <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -1146,7 +1153,7 @@ const PrimeVideo = () => {
             {user && (
               <div className="p-4 border-t border-gray-800/50">
                 <div className="flex items-center space-x-3 p-3 bg-gray-800/50 rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/30 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-12 h-12 rounded-full bg-yellow-500/30 flex items-center justify-center text-white font-bold text-lg">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -1168,16 +1175,16 @@ const PrimeVideo = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1616531770192-6eaea74c2456?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1596755094514-40be00b5601e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-black/50"></div>
             <div className="relative z-10 text-center px-4">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 drop-shadow-lg">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-400 mb-3 drop-shadow-lg">
                 Cuentas Premium de Prime Video
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Disfruta de series, películas y contenido exclusivo con nuestras cuentas premium de Prime Video
+                Disfruta de tus películas y series favoritas con nuestras cuentas premium de Prime Video
               </p>
             </div>
           </section>
@@ -1189,7 +1196,7 @@ const PrimeVideo = () => {
               </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
-                className="text-sm sm:text-base text-blue-400 hover:text-blue-300 transition-all underline underline-offset-4"
+                className="text-sm sm:text-base text-yellow-400 hover:text-yellow-300 transition-all underline underline-offset-4"
               >
                 Términos Generales
               </button>
@@ -1222,7 +1229,7 @@ const PrimeVideo = () => {
                       </h3>
                       <div className="flex items-center mb-2">
                         {product.renewal ? (
-                          <p className="text-blue-400 text-sm">
+                          <p className="text-green-400 text-sm">
                             Renovación - S/ {formatPrice(product.renewalPrice)}
                           </p>
                         ) : (
@@ -1231,25 +1238,25 @@ const PrimeVideo = () => {
                       </div>
                       <div className="text-sm text-gray-300 space-y-2 mb-3">
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiUserCheck className="text-blue-400" size={16} />
+                          <FiUserCheck className="text-yellow-400" size={16} />
                           <span className="text-gray-400 truncate">
                             {product.provider}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiClock className="text-blue-400" size={16} />
+                          <FiClock className="text-yellow-400" size={16} />
                           <span className="text-gray-400">
                             {parseDurationToDays(product.duration || "1 mes")}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiTag className="text-blue-400" size={16} />
+                          <FiTag className="text-yellow-400" size={16} />
                           <span className="text-gray-400">
-                            {product.type || "Standard"}
+                            {product.accountType} {/* Use accountType */}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2 bg啤酒-700/50 p-2 rounded-md">
-                          <FiActivity className="text-blue-400" size={16} />
+                        <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
+                          <FiActivity className="text-yellow-400" size={16} />
                           <span className="text-gray-400">{product.status}</span>
                         </div>
                       </div>
@@ -1279,8 +1286,8 @@ const PrimeVideo = () => {
                         }
                         className={`w-full py-3 rounded-md flex items-center justify-center transition-all text-white font-medium text-sm ${
                           product.status === "A pedido" || product.stock > 0
-                            ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                            : "bg-blue-600/50 cursor-not-allowed"
+                            ? "bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700"
+                            : "bg-yellow-600/50 cursor-not-allowed"
                         }`}
                       >
                         <FiShoppingCart className="mr-2" size={16} />
@@ -1351,7 +1358,7 @@ const PrimeVideo = () => {
                         customerName: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-white transition-all"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white transition-all"
                     required
                   />
                 </div>
@@ -1368,7 +1375,7 @@ const PrimeVideo = () => {
                         phoneNumber: e.target.value,
                       }))
                     }
-                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-white transition-all"
+                    className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-white transition-all"
                     placeholder="Ej. 999888777"
                     required
                   />
@@ -1377,7 +1384,7 @@ const PrimeVideo = () => {
                   <input
                     type="checkbox"
                     id="termsCheck"
-                    className="mt-1 mr-3 bg-gray-700 border-gray-600 text-blue-400 focus:ring-blue-400 rounded"
+                    className="mt-1 mr-3 bg-gray-700 border-gray-600 text-yellow-400 focus:ring-yellow-400 rounded"
                     required
                   />
                   <label htmlFor="termsCheck" className="text-sm text-gray-300">
@@ -1385,7 +1392,7 @@ const PrimeVideo = () => {
                     <button
                       type="button"
                       onClick={() => setTermsModal(true)}
-                      className="text-blue-400 hover:text-blue-300 transition-all underline underline-offset-4"
+                      className="text-yellow-400 hover:text-yellow-300 transition-all underline underline-offset-4"
                     >
                       Términos
                     </button>{" "}
@@ -1393,7 +1400,7 @@ const PrimeVideo = () => {
                     <button
                       type="button"
                       onClick={() => setGeneralTermsModal(true)}
-                      className="text-blue-400 hover:text-blue-300 transition-all underline underline-offset-4"
+                      className="text-yellow-400 hover:text-yellow-300 transition-all underline underline-offset-4"
                     >
                       Condiciones Generales
                     </button>
@@ -1410,7 +1417,7 @@ const PrimeVideo = () => {
                 <button
                   onClick={finalizePurchase}
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:bg-gray-700/50 disabled:text-gray-400 flex items-center transition-all"
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 disabled:bg-gray-700/50 disabled:text-gray-400 flex items-center transition-all"
                 >
                   {loading && <FiLoader className="animate-spin mr-2" />}
                   <span>
@@ -1455,7 +1462,7 @@ const PrimeVideo = () => {
                   }
                   setNotificationModal(null);
                 }}
-                className="w-full py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all"
+                className="w-full py-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition-all"
               >
                 Aceptar
               </button>
@@ -1483,6 +1490,10 @@ const PrimeVideo = () => {
                 <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">Proveedor:</h3>
                   <p className="text-gray-300">{detailModal.provider || "No disponible"}</p>
+                </div>
+                <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
+                  <h3 className="font-medium text-white mb-2">Tipo de cuenta:</h3>
+                  <p className="text-gray-300">{detailModal.accountType}</p>
                 </div>
                 <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">Detalles de la cuenta:</h3>
@@ -1527,6 +1538,7 @@ const PrimeVideo = () => {
                       accountDetails: detailModal.accountDetails,
                       provider: detailModal.provider,
                       terms: detailModal.terms,
+                      accountType: detailModal.accountType,
                     });
                   }}
                   className="text-gray-400 hover:text-white transition-all"
@@ -1538,6 +1550,11 @@ const PrimeVideo = () => {
                 <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
                   <h3 className="font-semibold text-white mb-2">
                     Proveedor: {detailModal.provider}
+                  </h3>
+                </div>
+                <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
+                  <h3 className="font-semibold text-white mb-2">
+                    Tipo de cuenta: {detailModal.accountType}
                   </h3>
                 </div>
                 <h3 className="font-semibold text-white mb-2">
@@ -1624,7 +1641,7 @@ const PrimeVideo = () => {
               </div>
               <button
                 onClick={() => setGeneralTermsModal(false)}
-                className="w-full mt-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all"
+                className="w-full mt-6 py-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition-all"
               >
                 Cerrar
               </button>
@@ -1638,7 +1655,7 @@ const PrimeVideo = () => {
           <div className="flex flex-col items-center space-y-4 md:flex-row md:justify-between md:space-y-0">
             <div className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-8 w-auto" />
-              <span className="text-sm font-semibold text-blue-400">
+              <span className="text-sm font-semibold text-yellow-400">
                 BlackStreaming
               </span>
             </div>

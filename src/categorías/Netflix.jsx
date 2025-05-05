@@ -149,7 +149,7 @@ const Netflix = () => {
             providerPhone: data.providerPhone || "",
             acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
-            type: data.type || "Premium",
+            accountType: data.accountType || "No especificado", // Fetch accountType from database
             status: data.status || "En stock",
             image: data.image || "https://via.placeholder.com/300",
             renewal: data.renewal || false,
@@ -580,6 +580,7 @@ const Netflix = () => {
       accountDetails: product.accountDetails,
       provider: product.provider,
       terms: product.terms,
+      accountType: product.accountType, // Use accountType
     });
   };
 
@@ -588,6 +589,7 @@ const Netflix = () => {
       name: product.name,
       terms: product.terms,
       provider: product.provider,
+      accountType: product.accountType, // Use accountType
     });
     setTermsModal(true);
   };
@@ -1250,7 +1252,7 @@ const Netflix = () => {
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
                           <FiTag className="text-red-400" size={16} />
                           <span className="text-gray-400">
-                            {product.type || "Premium"}
+                            {product.accountType} {/* Use accountType */}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
@@ -1490,6 +1492,10 @@ const Netflix = () => {
                   <p className="text-gray-300">{detailModal.provider || "No disponible"}</p>
                 </div>
                 <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
+                  <h3 className="font-medium text-white mb-2">Tipo de cuenta:</h3>
+                  <p className="text-gray-300">{detailModal.accountType}</p>
+                </div>
+                <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
                   <h3 className="font-medium text-white mb-2">Detalles de la cuenta:</h3>
                   <div className="p-3 bg-gray-800/50 rounded-lg">
                     <pre className="text-sm text-gray-300 whitespace-pre-wrap">
@@ -1532,6 +1538,7 @@ const Netflix = () => {
                       accountDetails: detailModal.accountDetails,
                       provider: detailModal.provider,
                       terms: detailModal.terms,
+                      accountType: detailModal.accountType,
                     });
                   }}
                   className="text-gray-400 hover:text-white transition-all"
@@ -1543,6 +1550,11 @@ const Netflix = () => {
                 <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
                   <h3 className="font-semibold text-white mb-2">
                     Proveedor: {detailModal.provider}
+                  </h3>
+                </div>
+                <div className="bg-gray-700/50 p-4 rounded-xl mb-4 border border-gray-600/50">
+                  <h3 className="font-semibold text-white mb-2">
+                    Tipo de cuenta: {detailModal.accountType}
                   </h3>
                 </div>
                 <h3 className="font-semibold text-white mb-2">

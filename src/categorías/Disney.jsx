@@ -149,7 +149,7 @@ const Disney = () => {
             providerPhone: data.providerPhone || "",
             acceptsOrders: data.status === "A pedido",
             duration: data.duration || "1 mes",
-            type: data.type || "Standard",
+            accountType: data.accountType || "No especificado",
             status: data.status || "En stock",
             image: data.image || "https://via.placeholder.com/300",
             renewal: data.renewal || false,
@@ -580,6 +580,7 @@ const Disney = () => {
       accountDetails: product.accountDetails,
       provider: product.provider,
       terms: product.terms,
+      accountType: product.accountType,
     });
   };
 
@@ -588,6 +589,7 @@ const Disney = () => {
       name: product.name,
       terms: product.terms,
       provider: product.provider,
+      accountType: product.accountType,
     });
     setTermsModal(true);
   };
@@ -1244,9 +1246,7 @@ const Disney = () => {
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
                           <FiTag className="text-blue-400" size={16} />
-                          <span className="text-gray-400">
-                            {product.type || "Standard"}
-                          </span>
+                          <span className="text-gray-400">{product.accountType}</span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
                           <FiActivity className="text-blue-400" size={16} />
@@ -1496,6 +1496,10 @@ const Disney = () => {
                     </pre>
                   </div>
                 </div>
+                <div className="bg-gray-700/50 p-4 rounded-xl border border-gray-600/50">
+                  <h3 className="font-medium text-white mb-2">Tipo de cuenta:</h3>
+                  <p className="text-gray-300">{detailModal.accountType}</p>
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -1527,6 +1531,7 @@ const Disney = () => {
                       accountDetails: detailModal.accountDetails,
                       provider: detailModal.provider,
                       terms: detailModal.terms,
+                      accountType: detailModal.accountType,
                     });
                   }}
                   className="text-gray-400 hover:text-white transition-all"
@@ -1540,6 +1545,9 @@ const Disney = () => {
                     Proveedor: {detailModal.provider}
                   </h3>
                 </div>
+                <h3 className="font-semibold text-white mb-2">
+                  Tipo de cuenta: {detailModal.accountType}
+                </h3>
                 <h3 className="font-semibold text-white mb-2">
                   Términos específicos:
                 </h3>

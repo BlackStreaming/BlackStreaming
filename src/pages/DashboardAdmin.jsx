@@ -70,6 +70,8 @@ const DashboardAdmin = () => {
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
   const [pendingTopUps, setPendingTopUps] = useState([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [topUpsHistory, setTopUpsHistory] = useState([]);
+  const [withdrawalsHistory, setWithdrawalsHistory] = useState([]);
   const [earnings, setEarnings] = useState({ day: 0, week: 0, month: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({}); // Granular loading for actions
@@ -83,7 +85,6 @@ const DashboardAdmin = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user && !isCreatingUser) {
-        // Only redirect if not in the middle of creating a user
         navigate("/login");
       } else if (user) {
         setEmail(user.email);
@@ -125,7 +126,7 @@ const DashboardAdmin = () => {
     });
   };
 
-  // Obtener usuarios, solicitudes pendientes y detalles de retiros
+  // Obtener usuarios, solicitudes pendientes, recargas, retiros e historiales
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -148,11 +149,19 @@ const DashboardAdmin = () => {
         const topUpsSnapshot = await getDocs(topUpsQuery);
         setPendingTopUps(topUpsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener retiros pendientes (proveedores)
+        // Obtener retiros pendientes
         const withdrawalsQuery = query(collection(db, "withdrawals"), where("status", "==", "pending"));
         const withdrawalsSnapshot = await getDocs(withdrawalsQuery);
         const withdrawalsData = withdrawalsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setPendingWithdrawals(withdrawalsData);
+
+        // Obtener historial de recargas
+        const topUpsHistorySnapshot = await getDocs(collection(db, "topUpsHistory"));
+        setTopUpsHistory(topUpsHistorySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+        // Obtener historial de retiros
+        const withdrawalsHistorySnapshot = await getDocs(collection(db, "withdrawalsHistory"));
+        setWithdrawalsHistory(withdrawalsHistorySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
         console.error("Error al obtener datos:", error);
         setError("Error al cargar datos");
@@ -192,23 +201,53 @@ const DashboardAdmin = () => {
       }
     );
 
+    const unsubscribeTopUpsHistory = onSnapshot(collection(db, "topUpsHistory"), (snapshot) => {
+      setTopUpsHistory(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubscribeWithdrawalsHistory = onSnapshot(collection(db, "withdrawalsHistory"), (snapshot) => {
+      setWithdrawalsHistory(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribePending();
       unsubscribeTopUps();
       unsubscribeWithdrawals();
+      unsubscribeTopUpsHistory();
+      unsubscribeWithdrawalsHistory();
     };
   }, []);
 
-  // Aprobar un retiro
+  // Aprobar un retiro y deducir del saldo del proveedor
   const approveWithdrawal = async (withdrawalId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: true }));
       const withdrawalRef = doc(db, "withdrawals", withdrawalId);
+      const withdrawal = pendingWithdrawals.find((w) => w.id === withdrawalId);
+      if (!withdrawal?.providerId) {
+        throw new Error("Proveedor no encontrado para el retiro");
+      }
+
+      // Actualizar el estado del retiro
       await updateDoc(withdrawalRef, {
         status: "approved",
         updatedAt: serverTimestamp(),
       });
+
+      // Deduct from provider's balance
+      const providerRef = doc(db, "users", withdrawal.providerId);
+      await updateDoc(providerRef, {
+        balance: increment(-withdrawal.amount || 0),
+      });
+
+      // Registrar en el historial de retiros (si no se hace en otro lugar)
+      await setDoc(doc(db, "withdrawalsHistory", withdrawalId), {
+        ...withdrawal,
+        status: "approved",
+        updatedAt: serverTimestamp(),
+      });
+
       setError(null);
       setModal({ isOpen: true, message: "Retiro aprobado exitosamente", type: "success" });
     } catch (error) {
@@ -216,7 +255,7 @@ const DashboardAdmin = () => {
       setError(error.message || "Error al aprobar el retiro");
       setModal({ isOpen: true, message: error.message || "Error al aprobar el retiro", type: "error" });
     } finally {
-      setActionLoading((prev) => ({ ...prev, [withdrawalId]: false }));
+      setActionLoading((prev) => ({ ...providerRef, [withdrawalId]: false }));
     }
   };
 
@@ -229,6 +268,15 @@ const DashboardAdmin = () => {
         status: "denied",
         updatedAt: serverTimestamp(),
       });
+
+      // Registrar en el historial de retiros
+      const withdrawal = pendingWithdrawals.find((w) => w.id === withdrawalId);
+      await setDoc(doc(db, "withdrawalsHistory", withdrawalId), {
+        ...withdrawal,
+        status: "denied",
+        updatedAt: serverTimestamp(),
+      });
+
       setError(null);
       setModal({ isOpen: true, message: "Retiro rechazado exitosamente", type: "success" });
     } catch (error) {
@@ -258,6 +306,12 @@ const DashboardAdmin = () => {
       await updateDoc(userRef, {
         balance: increment(topUp.amount || 0),
       });
+      // Registrar en el historial de recargas
+      await setDoc(doc(db, "topUpsHistory", topUpId), {
+        ...topUp,
+        status: "aprobado",
+        updatedAt: serverTimestamp(),
+      });
       setError(null);
       setModal({ isOpen: true, message: "Recarga aprobada exitosamente", type: "success" });
     } catch (error) {
@@ -278,6 +332,13 @@ const DashboardAdmin = () => {
         status: "rechazado",
         updatedAt: serverTimestamp(),
       });
+      // Registrar en el historial de recargas
+      const topUp = pendingTopUps.find((t) => t.id === topUpId);
+      await setDoc(doc(db, "topUpsHistory", topUpId), {
+        ...topUp,
+        status: "rechazado",
+        updatedAt: serverTimestamp(),
+      });
       setError(null);
       setModal({ isOpen: true, message: "Recarga rechazada exitosamente", type: "success" });
     } catch (error) {
@@ -293,7 +354,7 @@ const DashboardAdmin = () => {
   const handleAccept = async (registrationId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [registrationId]: true }));
-      setIsCreatingUser(true); // Set flag to prevent redirect
+      setIsCreatingUser(true);
 
       const registrationRef = doc(db, "pendingRegistrations", registrationId);
       const registration = pendingRegistrations.find((r) => r.id === registrationId);
@@ -326,12 +387,8 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
 
-      // Sign out the new user immediately to prevent session takeover
+      // Sign out the new user immediately
       await signOut(auth);
-
-      // Since we signed out, onAuthStateChanged will trigger, but isCreatingUser prevents redirect
-      // The admin session should be restored automatically by Firebase's persistence
-      // In a production app, this should be handled via a Cloud Function
 
       setError(null);
       setModal({ isOpen: true, message: "Solicitud de registro aprobada exitosamente", type: "success" });
@@ -341,7 +398,7 @@ const DashboardAdmin = () => {
       setModal({ isOpen: true, message: error.message || "Error al aceptar la solicitud de registro", type: "error" });
     } finally {
       setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
-      setIsCreatingUser(false); // Reset flag
+      setIsCreatingUser(false);
     }
   };
 
@@ -660,7 +717,7 @@ const DashboardAdmin = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Rol
                         </th>
-                        <th className="px | 4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Saldo
                         </th>
                       </tr>
@@ -701,140 +758,248 @@ const DashboardAdmin = () => {
 
       case "recargas":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Recargas pendientes</h3>
-            {pendingTopUps.length > 0 ? (
-              <div className="space-y-4">
-                {pendingTopUps.map((topUp) => (
-                  <div
-                    key={topUp.id}
-                    className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-cyan-900 rounded-full flex items-center justify-center text-cyan-400">
-                          <FiDollarSign size={18} />
+          <div className="space-y-6 max-w-6xl mx-auto">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold text-white mb-6">Recargas pendientes</h3>
+              {pendingTopUps.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingTopUps.map((topUp) => (
+                    <div
+                      key={topUp.id}
+                      className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-cyan-900 rounded-full flex items-center justify-center text-cyan-400">
+                            <FiDollarSign size={18} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-white">{topUp.username || "Sin nombre"}</h4>
+                            <p className="text-xs text-gray-400">Solicitado: {formatDate(topUp.requestedAt)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-white">{topUp.username || "Sin nombre"}</h4>
-                          <p className="text-xs text-gray-400">Solicitado: {formatDate(topUp.requestedAt)}</p>
+                        <div className="text-right">
+                          <p className="text-lg font-medium text-white">S/ {(topUp.amount || 0).toFixed(2)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-medium text-white">S/ {(topUp.amount || 0).toFixed(2)}</p>
+                      <div className="p-4 bg-gray-700">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            onClick={() => approveTopUp(topUp.id)}
+                            disabled={actionLoading[topUp.id]}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
+                          >
+                            {actionLoading[topUp.id] ? (
+                              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                            ) : (
+                              <>
+                                <FiCheck size={18} /> Aprobar Recarga
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => denyTopUp(topUp.id)}
+                            disabled={actionLoading[topUp.id]}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
+                          >
+                            {actionLoading[topUp.id] ? (
+                              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                            ) : (
+                              <>
+                                <FiX size={18} /> Rechazar Recarga
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-gray-700">
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          onClick={() => approveTopUp(topUp.id)}
-                          disabled={actionLoading[topUp.id]}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
-                        >
-                          {actionLoading[topUp.id] ? (
-                            <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                          ) : (
-                            <>
-                              <FiCheck size={18} /> Aprobar Recarga
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => denyTopUp(topUp.id)}
-                          disabled={actionLoading[topUp.id]}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
-                        >
-                          {actionLoading[topUp.id] ? (
-                            <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                          ) : (
-                            <>
-                              <FiX size={18} /> Rechazar Recarga
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
-                <h4 className="text-lg font-medium text-gray-300">No hay recargas pendientes</h4>
-                <p className="text-gray-400">Todas las solicitudes han sido procesadas</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
+                  <h4 className="text-lg font-medium text-gray-300">No hay recargas pendientes</h4>
+                  <p className="text-gray-400">Todas las solicitudes han sido procesadas</p>
+                </div>
+              )}
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold text-white mb-4">Historial de recargas</h3>
+              {topUpsHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-600">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Usuario
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Monto
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                      {topUpsHistory.map((topUp) => (
+                        <tr key={topUp.id} className="hover:bg-gray-700 transition-colors">
+                          <td className="px-4 py-4 whitespace-nowrap text-white">{topUp.username || "Sin nombre"}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-white">S/ {(topUp.amount || 0).toFixed(2)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                topUp.status === "aprobado"
+                                  ? "bg-green-900 text-green-400"
+                                  : "bg-red-900 text-red-400"
+                              }`}
+                            >
+                              {topUp.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-300">{formatDate(topUp.updatedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
+                  <p className="text-gray-300">No hay historial de recargas</p>
+                </div>
+              )}
+            </div>
           </div>
         );
 
       case "retiros":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Solicitudes de retiro</h3>
-            {pendingWithdrawals.length > 0 ? (
-              <div className="space-y-4">
-                {pendingWithdrawals.map((withdrawal) => (
-                  <div
-                    key={withdrawal.id}
-                    className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-yellow-900 rounded-full flex items-center justify-center text-yellow-400">
-                          <FiDollarSign size={18} />
+          <div className="space-y-6 max-w-6xl mx-auto">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold text-white mb-6">Solicitudes de retiro</h3>
+              {pendingWithdrawals.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingWithdrawals.map((withdrawal) => (
+                    <div
+                      key={withdrawal.id}
+                      className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-yellow-900 rounded-full flex items-center justify-center text-yellow-400">
+                            <FiDollarSign size={18} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-white">{withdrawal.provider || "Sin proveedor"}</h4>
+                            <p className="text-xs text-gray-400">Email: {withdrawal.providerEmail || "No disponible"}</p>
+                            <p className="text-xs text-gray-400">Solicitado: {formatDate(withdrawal.createdAt)}</p>
+                            <p className="text-xs text-gray-400">Método: {withdrawal.method || "No especificado"}</p>
+                            <p className="text-xs text-gray-400">Cuenta: {withdrawal.account || "No especificada"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-white">{withdrawal.provider || "Sin proveedor"}</h4>
-                          <p className="text-xs text-gray-400">Email: {withdrawal.providerEmail || "No disponible"}</p>
-                          <p className="text-xs text-gray-400">Solicitado: {formatDate(withdrawal.createdAt)}</p>
-                          <p className="text-xs text-gray-400">Método: {withdrawal.method || "No especificado"}</p>
-                          <p className="text-xs text-gray-400">Cuenta: {withdrawal.account || "No especificada"}</p>
+                        <div className="text-right">
+                          <p className="text-lg font-medium text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-medium text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</p>
+                      <div className="p-4 bg-gray-700">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            onClick={() => approveWithdrawal(withdrawal.id)}
+                            disabled={actionLoading[withdrawal.id]}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
+                          >
+                            {actionLoading[withdrawal.id] ? (
+                              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                            ) : (
+                              <>
+                                <FiCheck size={18} /> Aprobar Retiro
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => denyWithdrawal(withdrawal.id)}
+                            disabled={actionLoading[withdrawal.id]}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
+                          >
+                            {actionLoading[withdrawal.id] ? (
+                              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                            ) : (
+                              <>
+                                <FiX size={18} /> Rechazar Retiro
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-4 bg-gray-700">
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          onClick={() => approveWithdrawal(withdrawal.id)}
-                          disabled={actionLoading[withdrawal.id]}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
-                        >
-                          {actionLoading[withdrawal.id] ? (
-                            <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                          ) : (
-                            <>
-                              <FiCheck size={18} /> Aprobar Retiro
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => denyWithdrawal(withdrawal.id)}
-                          disabled={actionLoading[withdrawal.id]}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
-                        >
-                          {actionLoading[withdrawal.id] ? (
-                            <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                          ) : (
-                            <>
-                              <FiX size={18} /> Rechazar Retiro
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
-                <h4 className="text-lg font-medium text-gray-300">No hay retiros pendientes</h4>
-                <p className="text-gray-400">Todas las solicitudes han sido procesadas</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
+                  <h4 className="text-lg font-medium text-gray-300">No hay retiros pendientes</h4>
+                  <p className="text-gray-400">Todas las solicitudes han sido procesadas</p>
+                </div>
+              )}
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-bold text-white mb-4">Historial de retiros</h3>
+              {withdrawalsHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-600">
+                    <thead className="bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Proveedor
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Monto
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Método
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                      {withdrawalsHistory.map((withdrawal) => (
+                        <tr key={withdrawal.id} className="hover:bg-gray-700 transition-colors">
+                          <td className="px-4 py-4 whitespace-nowrap text-white">{withdrawal.provider || "Sin proveedor"}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                withdrawal.status === "approved"
+                                  ? "bg-green-900 text-green-400"
+                                  : "bg-red-900 text-red-400"
+                              }`}
+                            >
+                              {withdrawal.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-300">{formatDate(withdrawal.updatedAt)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-gray-300">{withdrawal.method || "No especificado"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FiDollarSign className="mx-auto text-4xl text-gray-400 mb-3" />
+                  <p className="text-gray-300">No hay historial de retiros</p>
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -900,7 +1065,7 @@ const DashboardAdmin = () => {
                   </tbody>
                 </table>
               </div>
-            </div>
+              </div>
           </div>
         );
 

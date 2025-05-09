@@ -13,6 +13,7 @@ import {
   FiArrowRight,
   FiX,
   FiCheck,
+  FiShoppingCart,
 } from "react-icons/fi";
 import { FaSearch } from "react-icons/fa";
 import { db, auth } from "../firebase";
@@ -39,21 +40,31 @@ import {
 import { useNavigate } from "react-router-dom";
 
 // Modal Component for Notifications
-const NotificationModal = ({ isOpen, message, type, onClose }) => {
+const NotificationModal = ({ isOpen, message, title, onClose }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className={`bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full border ${type === "success" ? "border-green-500" : "border-red-500"}`}>
-        <h3 className={`text-lg font-bold mb-2 ${type === "success" ? "text-green-400" : "text-red-400"}`}>
-          {type === "success" ? "Éxito" : "Error"}
-        </h3>
-        <p className="text-gray-300 mb-4">{message}</p>
-        <button
-          onClick={onClose}
-          className={`w-full py-2 rounded-lg ${type === "success" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} text-white transition-colors`}
-        >
-          Cerrar
-        </button>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-all duration-300"
+            >
+              <FiX size={20} />
+            </button>
+          </div>
+          <p className="text-gray-300 mb-6">{message}</p>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -65,23 +76,35 @@ const DashboardAdmin = () => {
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [totalUsers, setTotalUsers] = useState(0);
-  const [users, setUsers] = useState([]); // Last 5 users for display
-  const [allUsers, setAllUsers] = useState([]); // All users for search
+  const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [pendingRegistrations, setPendingRegistrations] = useState([]);
   const [pendingTopUps, setPendingTopUps] = useState([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [topUpsHistory, setTopUpsHistory] = useState([]);
   const [withdrawalsHistory, setWithdrawalsHistory] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [totalSales, setTotalSales] = useState(0);
   const [earnings, setEarnings] = useState({ day: 0, week: 0, month: 0, total: 0 });
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState({}); // Granular loading for actions
+  const [actionLoading, setActionLoading] = useState({});
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [modal, setModal] = useState({ isOpen: false, message: "", type: "success" }); // Modal state
-  const [isCreatingUser, setIsCreatingUser] = useState(false); // Flag to track user creation
+  const [modal, setModal] = useState({ isOpen: false, message: "", title: "" });
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const navigate = useNavigate();
 
-  // Verificar autenticación y redirigir si no está autenticado, excepto durante creación de usuario
+  // Function to show modal
+  const showModal = (title, message) => {
+    setModal({ isOpen: true, title, message });
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setModal({ isOpen: false, message: "", title: "" });
+  };
+
+  // Verificar autenticación
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user && !isCreatingUser) {
@@ -95,7 +118,7 @@ const DashboardAdmin = () => {
     return () => unsubscribe();
   }, [navigate, isCreatingUser]);
 
-  // Obtener el nombre del administrador autenticado
+  // Obtener nombre del administrador
   const fetchUsername = async (uid) => {
     try {
       const userDocRef = doc(db, "users", uid);
@@ -112,9 +135,9 @@ const DashboardAdmin = () => {
     }
   };
 
-  // Calcular ganancias basadas en usuarios
+  // Calcular ganancias
   const calculateEarnings = (usersCount) => {
-    const earningsPerUser = 5; // 5 soles por usuario
+    const earningsPerUser = 5;
     const totalEarnings = usersCount * earningsPerUser;
     const weeklyEarnings = totalEarnings * 0.25;
     const dailyEarnings = totalEarnings * 0.05;
@@ -126,42 +149,48 @@ const DashboardAdmin = () => {
     });
   };
 
-  // Obtener usuarios, solicitudes pendientes, recargas, retiros e historiales
+  // Obtener datos de Firestore
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Obtener usuarios
+        // Usuarios
         const usersSnapshot = await getDocs(collection(db, "users"));
         const usersCount = usersSnapshot.size;
         const usersList = usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setTotalUsers(usersCount);
-        setUsers(usersList.slice(-5)); // Últimos 5 para la vista inicial
-        setAllUsers(usersList); // Todos los usuarios para búsqueda
+        setUsers(usersList.slice(-5));
+        setAllUsers(usersList);
         calculateEarnings(usersCount);
 
-        // Obtener registros pendientes
+        // Registros pendientes
         const pendingQuery = query(collection(db, "pendingRegistrations"), where("status", "==", "pending"));
         const pendingSnapshot = await getDocs(pendingQuery);
         setPendingRegistrations(pendingSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener recargas pendientes
+        // Recargas pendientes
         const topUpsQuery = query(collection(db, "pendingTopUps"), where("status", "==", "pendiente"));
         const topUpsSnapshot = await getDocs(topUpsQuery);
         setPendingTopUps(topUpsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener retiros pendientes
+        // Retiros pendientes
         const withdrawalsQuery = query(collection(db, "withdrawals"), where("status", "==", "pending"));
         const withdrawalsSnapshot = await getDocs(withdrawalsQuery);
-        const withdrawalsData = withdrawalsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setPendingWithdrawals(withdrawalsData);
+        setPendingWithdrawals(withdrawalsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener historial de recargas
+        // Historial de recargas
         const topUpsHistorySnapshot = await getDocs(collection(db, "topUpsHistory"));
         setTopUpsHistory(topUpsHistorySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 
-        // Obtener historial de retiros
+        // Historial de retiros
         const withdrawalsHistorySnapshot = await getDocs(collection(db, "withdrawalsHistory"));
         setWithdrawalsHistory(withdrawalsHistorySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+        // Ventas
+        const salesSnapshot = await getDocs(collection(db, "sales"));
+        const salesList = salesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setSales(salesList);
+        const total = salesList.reduce((sum, sale) => sum + (sale.price || 0), 0);
+        setTotalSales(total);
       } catch (error) {
         console.error("Error al obtener datos:", error);
         setError("Error al cargar datos");
@@ -196,8 +225,7 @@ const DashboardAdmin = () => {
     const unsubscribeWithdrawals = onSnapshot(
       query(collection(db, "withdrawals"), where("status", "==", "pending")),
       (snapshot) => {
-        const withdrawalsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setPendingWithdrawals(withdrawalsData);
+        setPendingWithdrawals(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
       }
     );
 
@@ -209,6 +237,13 @@ const DashboardAdmin = () => {
       setWithdrawalsHistory(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
 
+    const unsubscribeSales = onSnapshot(collection(db, "sales"), (snapshot) => {
+      const salesList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setSales(salesList);
+      const total = salesList.reduce((sum, sale) => sum + (sale.price || 0), 0);
+      setTotalSales(total);
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribePending();
@@ -216,10 +251,11 @@ const DashboardAdmin = () => {
       unsubscribeWithdrawals();
       unsubscribeTopUpsHistory();
       unsubscribeWithdrawalsHistory();
+      unsubscribeSales();
     };
   }, []);
 
-  // Aprobar un retiro y deducir del saldo del proveedor
+  // Aprobar retiro
   const approveWithdrawal = async (withdrawalId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: true }));
@@ -228,38 +264,31 @@ const DashboardAdmin = () => {
       if (!withdrawal?.providerId) {
         throw new Error("Proveedor no encontrado para el retiro");
       }
-
-      // Actualizar el estado del retiro
       await updateDoc(withdrawalRef, {
         status: "approved",
         updatedAt: serverTimestamp(),
       });
-
-      // Deduct from provider's balance
       const providerRef = doc(db, "users", withdrawal.providerId);
       await updateDoc(providerRef, {
         balance: increment(-withdrawal.amount || 0),
       });
-
-      // Registrar en el historial de retiros (si no se hace en otro lugar)
       await setDoc(doc(db, "withdrawalsHistory", withdrawalId), {
         ...withdrawal,
         status: "approved",
         updatedAt: serverTimestamp(),
       });
-
       setError(null);
-      setModal({ isOpen: true, message: "Retiro aprobado exitosamente", type: "success" });
+      showModal("Éxito", "Retiro aprobado exitosamente");
     } catch (error) {
       console.error("Error al aprobar retiro:", error);
       setError(error.message || "Error al aprobar el retiro");
-      setModal({ isOpen: true, message: error.message || "Error al aprobar el retiro", type: "error" });
+      showModal("Error", error.message || "Error al aprobar el retiro");
     } finally {
-      setActionLoading((prev) => ({ ...providerRef, [withdrawalId]: false }));
+      setActionLoading((prev) => ({ ...prev, [withdrawalId]: false }));
     }
   };
 
-  // Rechazar un retiro
+  // Rechazar retiro
   const denyWithdrawal = async (withdrawalId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: true }));
@@ -268,27 +297,24 @@ const DashboardAdmin = () => {
         status: "denied",
         updatedAt: serverTimestamp(),
       });
-
-      // Registrar en el historial de retiros
       const withdrawal = pendingWithdrawals.find((w) => w.id === withdrawalId);
       await setDoc(doc(db, "withdrawalsHistory", withdrawalId), {
         ...withdrawal,
         status: "denied",
         updatedAt: serverTimestamp(),
       });
-
       setError(null);
-      setModal({ isOpen: true, message: "Retiro rechazado exitosamente", type: "success" });
+      showModal("Éxito", "Retiro rechazado exitosamente");
     } catch (error) {
       console.error("Error al rechazar retiro:", error);
       setError(error.message || "Error al rechazar el retiro");
-      setModal({ isOpen: true, message: error.message || "Error al rechazar el retiro", type: "error" });
+      showModal("Error", error.message || "Error al rechazar el retiro");
     } finally {
       setActionLoading((prev) => ({ ...prev, [withdrawalId]: false }));
     }
   };
 
-  // Aprobar una recarga
+  // Aprobar recarga
   const approveTopUp = async (topUpId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [topUpId]: true }));
@@ -301,29 +327,27 @@ const DashboardAdmin = () => {
         status: "aprobado",
         updatedAt: serverTimestamp(),
       });
-      // Actualizar el saldo del usuario
       const userRef = doc(db, "users", topUp.userId);
       await updateDoc(userRef, {
         balance: increment(topUp.amount || 0),
       });
-      // Registrar en el historial de recargas
       await setDoc(doc(db, "topUpsHistory", topUpId), {
         ...topUp,
         status: "aprobado",
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      setModal({ isOpen: true, message: "Recarga aprobada exitosamente", type: "success" });
+      showModal("Éxito", "Recarga aprobada exitosamente");
     } catch (error) {
       console.error("Error al aprobar recarga:", error);
       setError(error.message || "Error al aprobar la recarga");
-      setModal({ isOpen: true, message: error.message || "Error al aprobar la recarga", type: "error" });
+      showModal("Error", error.message || "Error al aprobar la recarga");
     } finally {
       setActionLoading((prev) => ({ ...prev, [topUpId]: false }));
     }
   };
 
-  // Rechazar una recarga
+  // Rechazar recarga
   const denyTopUp = async (topUpId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [topUpId]: true }));
@@ -332,7 +356,6 @@ const DashboardAdmin = () => {
         status: "rechazado",
         updatedAt: serverTimestamp(),
       });
-      // Registrar en el historial de recargas
       const topUp = pendingTopUps.find((t) => t.id === topUpId);
       await setDoc(doc(db, "topUpsHistory", topUpId), {
         ...topUp,
@@ -340,39 +363,32 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      setModal({ isOpen: true, message: "Recarga rechazada exitosamente", type: "success" });
+      showModal("Éxito", "Recarga rechazada exitosamente");
     } catch (error) {
       console.error("Error al rechazar recarga:", error);
       setError(error.message || "Error al rechazar la recarga");
-      setModal({ isOpen: true, message: error.message || "Error al rechazar la recarga", type: "error" });
+      showModal("Error", error.message || "Error al rechazar la recarga");
     } finally {
       setActionLoading((prev) => ({ ...prev, [topUpId]: false }));
     }
   };
 
-  // Aceptar solicitud de registro
+  // Aceptar registro
   const handleAccept = async (registrationId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [registrationId]: true }));
       setIsCreatingUser(true);
-
       const registrationRef = doc(db, "pendingRegistrations", registrationId);
       const registration = pendingRegistrations.find((r) => r.id === registrationId);
       if (!registration) {
         throw new Error("Solicitud no encontrada");
       }
-
-      // Check if email is already in use
       const signInMethods = await fetchSignInMethodsForEmail(auth, registration.email);
       if (signInMethods.length > 0) {
         throw new Error("El correo ya está registrado");
       }
-
-      // Crear usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, registration.email, registration.password);
       const newUser = userCredential.user;
-
-      // Guardar datos del usuario en Firestore
       await setDoc(doc(db, "users", newUser.uid), {
         username: registration.username,
         email: registration.email,
@@ -380,29 +396,24 @@ const DashboardAdmin = () => {
         balance: 0,
         createdAt: serverTimestamp(),
       });
-
-      // Actualizar estado de la solicitud
       await updateDoc(registrationRef, {
         status: "approved",
         updatedAt: serverTimestamp(),
       });
-
-      // Sign out the new user immediately
       await signOut(auth);
-
       setError(null);
-      setModal({ isOpen: true, message: "Solicitud de registro aprobada exitosamente", type: "success" });
+      showModal("Éxito", "Solicitud de registro aprobada exitosamente");
     } catch (error) {
       console.error("Error al aceptar solicitud:", error);
       setError(error.message || "Error al aceptar la solicitud de registro");
-      setModal({ isOpen: true, message: error.message || "Error al aceptar la solicitud de registro", type: "error" });
+      showModal("Error", error.message || "Error al aceptar la solicitud de registro");
     } finally {
       setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
       setIsCreatingUser(false);
     }
   };
 
-  // Rechazar solicitud de registro
+  // Rechazar registro
   const handleDeny = async (registrationId) => {
     try {
       setActionLoading((prev) => ({ ...prev, [registrationId]: true }));
@@ -412,17 +423,17 @@ const DashboardAdmin = () => {
         updatedAt: serverTimestamp(),
       });
       setError(null);
-      setModal({ isOpen: true, message: "Solicitud de registro rechazada exitosamente", type: "success" });
+      showModal("Éxito", "Solicitud de registro rechazada exitosamente");
     } catch (error) {
       console.error("Error al rechazar solicitud:", error);
       setError(error.message || "Error al rechazar la solicitud de registro");
-      setModal({ isOpen: true, message: error.message || "Error al rechazar la solicitud de registro", type: "error" });
+      showModal("Error", error.message || "Error al rechazar la solicitud de registro");
     } finally {
       setActionLoading((prev) => ({ ...prev, [registrationId]: false }));
     }
   };
 
-  // Función para cerrar sesión
+  // Cerrar sesión
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -430,11 +441,11 @@ const DashboardAdmin = () => {
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
       setError(error.message || "Error al cerrar sesión");
-      setModal({ isOpen: true, message: error.message || "Error al cerrar sesión", type: "error" });
+      showModal("Error", error.message || "Error al cerrar sesión");
     }
   };
 
-  // Guardar cambios en configuración
+  // Guardar cambios de configuración
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     try {
@@ -444,14 +455,10 @@ const DashboardAdmin = () => {
         throw new Error("Usuario no autenticado");
       }
       const userRef = doc(db, "users", user.uid);
-
-      // Update username in Firestore
       await updateDoc(userRef, {
         username: userName,
         updatedAt: serverTimestamp(),
       });
-
-      // Update password if provided
       const newPassword = e.target.password.value;
       if (newPassword) {
         if (newPassword.length < 6) {
@@ -459,13 +466,12 @@ const DashboardAdmin = () => {
         }
         await updatePassword(user, newPassword);
       }
-
       setError(null);
-      setModal({ isOpen: true, message: "Cambios guardados exitosamente", type: "success" });
+      showModal("Éxito", "Cambios guardados exitosamente");
     } catch (error) {
       console.error("Error al guardar cambios:", error);
       setError(error.message || "Error al guardar cambios");
-      setModal({ isOpen: true, message: error.message || "Error al guardar cambios", type: "error" });
+      showModal("Error", error.message || "Error al guardar cambios");
     } finally {
       setActionLoading((prev) => ({ ...prev, config: false }));
     }
@@ -477,7 +483,7 @@ const DashboardAdmin = () => {
     try {
       const d = date.toDate ? date.toDate() : new Date(date);
       if (isNaN(d.getTime())) return "Fecha inválida";
-      return d.toLocaleDateString("es-ES", {
+      return d.toLocaleString("es-ES", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -489,26 +495,50 @@ const DashboardAdmin = () => {
     }
   };
 
-  // Renderizar contenido principal
+  // Formatear valor para mostrar en la tabla
+  const formatValue = (value, key) => {
+    if (value === null || value === undefined) return "N/A";
+    if (key.toLowerCase().includes("at") && (value?.toDate || new Date(value).getTime())) {
+      return formatDate(value);
+    }
+    if (typeof value === "object" && !Array.isArray(value)) {
+      return JSON.stringify(value);
+    }
+    if (Array.isArray(value)) {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
+  // Determinar estado del pedido
+  const getOrderStatus = (sale) => {
+    if (sale.status === "pending") return "Pendiente";
+    if (!sale.expirationDate) return "Activo";
+    const now = new Date();
+    const expiration = sale.expirationDate.toDate ? sale.expirationDate.toDate() : new Date(sale.expirationDate);
+    return now > expiration ? "Expirado" : "Activo";
+  };
+
+  // Renderizar contenido
   const renderContent = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
         </div>
       );
     }
     if (error) {
       return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-          <FiAlertCircle className="mx-auto text-4xl text-red-500 mb-4" />
+        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+          <FiAlertCircle className="mx-auto text-4xl text-red-400 mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Error</h3>
           <p className="text-gray-300 mb-4">{error}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+            onClick={() => setError(null)}
+            className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
           >
-            Recargar
+            Aceptar
           </button>
         </div>
       );
@@ -517,12 +547,12 @@ const DashboardAdmin = () => {
     switch (activeSection) {
       case "inicio":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-6">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6">
               Bienvenido, <span className="text-cyan-400">{userName}</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Información de cuenta</h3>
                 <div className="space-y-2 text-gray-300">
                   <p className="flex items-center">
@@ -535,29 +565,29 @@ const DashboardAdmin = () => {
                   </p>
                 </div>
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Ganancias del mes</h3>
                 <p className="text-3xl font-bold text-white">S/ {earnings.month.toFixed(2)}</p>
                 <p className="text-sm text-gray-300 mt-1">(5 soles por cada usuario)</p>
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Usuarios registrados</h3>
                 <p className="text-3xl font-bold text-white">{totalUsers}</p>
                 <p className="text-sm text-gray-300 mt-1">Total ganancias: S/ {earnings.total.toFixed(2)}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
                 <h3 className="text-lg font-semibold text-white mb-3">Últimos usuarios</h3>
                 {users.length > 0 ? (
                   users.map((user) => (
                     <div
                       key={user.id}
-                      className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors rounded-lg px-2"
+                      className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2"
                     >
                       <div className="flex justify-between items-center">
                         <p className="font-medium text-white">{user.username || "Sin nombre"}</p>
-                        <span className="text-xs px-2 py-1 rounded-full bg-cyan-900 text-cyan-400">
+                        <span className="text-xs px-2 py-1 rounded-full bg-cyan-900/80 text-cyan-400">
                           {user.role || "usuario"}
                         </span>
                       </div>
@@ -568,17 +598,17 @@ const DashboardAdmin = () => {
                   <p className="text-gray-400 py-2">No hay usuarios registrados</p>
                 )}
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
                 <h3 className="text-lg font-semibold text-white mb-3">Solicitudes pendientes</h3>
                 {pendingRegistrations.length > 0 ? (
                   pendingRegistrations.slice(0, 3).map((reg) => (
                     <div
                       key={reg.id}
-                      className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors rounded-lg px-2"
+                      className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2"
                     >
                       <div className="flex justify-between items-center">
                         <p className="font-medium text-white">{reg.username || "Sin nombre"}</p>
-                        <span className="text-xs px-2 py-1 rounded-full bg-purple-900 text-purple-400">
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-900/80 text-purple-400">
                           {reg.role || "usuario"}
                         </span>
                       </div>
@@ -589,17 +619,17 @@ const DashboardAdmin = () => {
                   <p className="text-gray-400 py-2">No hay solicitudes pendientes</p>
                 )}
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 shadow-sm">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
                 <h3 className="text-lg font-semibold text-white mb-3">Retiros pendientes</h3>
                 {pendingWithdrawals.length > 0 ? (
                   pendingWithdrawals.slice(0, 3).map((withdrawal) => (
                     <div
                       key={withdrawal.id}
-                      className="border-b border-gray-600 py-3 last:border-0 hover:bg-gray-600 transition-colors rounded-lg px-2"
+                      className="border-b border-gray-600/50 py-3 last:border-0 hover:bg-gray-600/50 transition-all duration-300 rounded-xl px-2"
                     >
                       <div className="flex justify-between items-center">
                         <p className="font-medium text-white">{withdrawal.provider || "Sin proveedor"}</p>
-                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-900 text-yellow-400">
+                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-900/80 text-yellow-400">
                           S/ {(withdrawal.amount || 0).toFixed(2)}
                         </span>
                       </div>
@@ -617,12 +647,12 @@ const DashboardAdmin = () => {
       case "usuarios":
         return (
           <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-4">Solicitudes de registro</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Solicitudes de registro</h3>
               {pendingRegistrations.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700">
+                  <table className="min-w-full divide-y divide-gray-600/50">
+                    <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Usuario
@@ -638,13 +668,13 @@ const DashboardAdmin = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {pendingRegistrations.map((reg) => (
-                        <tr key={reg.id} className="hover:bg-gray-700 transition-colors">
+                        <tr key={reg.id} className="hover:bg-gray-700/50 transition-all duration-300">
                           <td className="px-4 py-4 whitespace-nowrap text-white">{reg.username || "Sin nombre"}</td>
                           <td className="px-4 py-4 whitespace-nowrap text-gray-300">{reg.email}</td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-cyan-900 text-cyan-400">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-cyan-900/80 text-cyan-400">
                               {reg.role || "usuario"}
                             </span>
                           </td>
@@ -653,7 +683,7 @@ const DashboardAdmin = () => {
                               <button
                                 onClick={() => handleAccept(reg.id)}
                                 disabled={actionLoading[reg.id]}
-                                className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-green-800"
+                                className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all duration-300 disabled:bg-green-800"
                                 title="Aceptar"
                               >
                                 {actionLoading[reg.id] ? (
@@ -665,7 +695,7 @@ const DashboardAdmin = () => {
                               <button
                                 onClick={() => handleDeny(reg.id)}
                                 disabled={actionLoading[reg.id]}
-                                className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:bg-red-800"
+                                className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-300 disabled:bg-red-800"
                                 title="Rechazar"
                               >
                                 {actionLoading[reg.id] ? (
@@ -688,15 +718,14 @@ const DashboardAdmin = () => {
                 </div>
               )}
             </div>
-
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Todos los usuarios ({totalUsers})</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-white">Todos los usuarios ({totalUsers})</h3>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Buscar usuarios..."
-                    className="px-4 py-2 rounded-full bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all text-sm"
+                    className="px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm placeholder-gray-500"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -705,8 +734,8 @@ const DashboardAdmin = () => {
               </div>
               {allUsers.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700">
+                  <table className="min-w-full divide-y divide-gray-600/50">
+                    <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Usuario
@@ -722,7 +751,7 @@ const DashboardAdmin = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {allUsers
                         .filter(
                           (user) =>
@@ -730,11 +759,11 @@ const DashboardAdmin = () => {
                             (user.email || "").toLowerCase().includes(searchQuery.toLowerCase())
                         )
                         .map((user) => (
-                          <tr key={user.id} className="hover:bg-gray-700 transition-colors">
+                          <tr key={user.id} className="hover:bg-gray-700/50 transition-all duration-300">
                             <td className="px-4 py-4 whitespace-nowrap text-white">{user.username || "Sin nombre"}</td>
                             <td className="px-4 py-4 whitespace-nowrap text-gray-300">{user.email}</td>
                             <td className="px-4 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-cyan-900 text-cyan-400">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-cyan-900/80 text-cyan-400">
                                 {user.role || "usuario"}
                               </span>
                             </td>
@@ -759,18 +788,18 @@ const DashboardAdmin = () => {
       case "recargas":
         return (
           <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-6">Recargas pendientes</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Recargas pendientes</h3>
               {pendingTopUps.length > 0 ? (
                 <div className="space-y-4">
                   {pendingTopUps.map((topUp) => (
                     <div
                       key={topUp.id}
-                      className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                      className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300"
                     >
-                      <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
+                      <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-cyan-900 rounded-full flex items-center justify-center text-cyan-400">
+                          <div className="w-10 h-10 bg-cyan-900/80 rounded-full flex items-center justify-center text-cyan-400">
                             <FiDollarSign size={18} />
                           </div>
                           <div>
@@ -782,12 +811,12 @@ const DashboardAdmin = () => {
                           <p className="text-lg font-medium text-white">S/ {(topUp.amount || 0).toFixed(2)}</p>
                         </div>
                       </div>
-                      <div className="p-4 bg-gray-700">
+                      <div className="p-4 bg-gray-700/50 backdrop-blur-sm">
                         <div className="flex flex-col sm:flex-row gap-3">
                           <button
                             onClick={() => approveTopUp(topUp.id)}
                             disabled={actionLoading[topUp.id]}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 disabled:bg-green-800 transition-all duration-300"
                           >
                             {actionLoading[topUp.id] ? (
                               <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
@@ -800,7 +829,7 @@ const DashboardAdmin = () => {
                           <button
                             onClick={() => denyTopUp(topUp.id)}
                             disabled={actionLoading[topUp.id]}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 disabled:bg-red-800 transition-all duration-300"
                           >
                             {actionLoading[topUp.id] ? (
                               <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
@@ -823,12 +852,12 @@ const DashboardAdmin = () => {
                 </div>
               )}
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-4">Historial de recargas</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Historial de recargas</h3>
               {topUpsHistory.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700">
+                  <table className="min-w-full divide-y divide-gray-600/50">
+                    <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Usuario
@@ -844,17 +873,17 @@ const DashboardAdmin = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {topUpsHistory.map((topUp) => (
-                        <tr key={topUp.id} className="hover:bg-gray-700 transition-colors">
+                        <tr key={topUp.id} className="hover:bg-gray-700/50 transition-all duration-300">
                           <td className="px-4 py-4 whitespace-nowrap text-white">{topUp.username || "Sin nombre"}</td>
                           <td className="px-4 py-4 whitespace-nowrap text-white">S/ {(topUp.amount || 0).toFixed(2)}</td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 topUp.status === "aprobado"
-                                  ? "bg-green-900 text-green-400"
-                                  : "bg-red-900 text-red-400"
+                                  ? "bg-green-900/80 text-green-400"
+                                  : "bg-red-900/80 text-red-400"
                               }`}
                             >
                               {topUp.status}
@@ -879,18 +908,18 @@ const DashboardAdmin = () => {
       case "retiros":
         return (
           <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-6">Solicitudes de retiro</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Solicitudes de retiro</h3>
               {pendingWithdrawals.length > 0 ? (
                 <div className="space-y-4">
                   {pendingWithdrawals.map((withdrawal) => (
                     <div
                       key={withdrawal.id}
-                      className="border border-gray-600 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                      className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300"
                     >
-                      <div className="bg-gray-700 px-4 py-3 border-b border-gray-600 flex justify-between items-center">
+                      <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-yellow-900 rounded-full flex items-center justify-center text-yellow-400">
+                          <div className="w-10 h-10 bg-yellow-900/80 rounded-full flex items-center justify-center text-yellow-400">
                             <FiDollarSign size={18} />
                           </div>
                           <div>
@@ -905,12 +934,12 @@ const DashboardAdmin = () => {
                           <p className="text-lg font-medium text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</p>
                         </div>
                       </div>
-                      <div className="p-4 bg-gray-700">
+                      <div className="p-4 bg-gray-700/50 backdrop-blur-sm">
                         <div className="flex flex-col sm:flex-row gap-3">
                           <button
                             onClick={() => approveWithdrawal(withdrawal.id)}
                             disabled={actionLoading[withdrawal.id]}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-green-800 transition-colors"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 disabled:bg-green-800 transition-all duration-300"
                           >
                             {actionLoading[withdrawal.id] ? (
                               <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
@@ -923,7 +952,7 @@ const DashboardAdmin = () => {
                           <button
                             onClick={() => denyWithdrawal(withdrawal.id)}
                             disabled={actionLoading[withdrawal.id]}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:bg-red-800 transition-colors"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 disabled:bg-red-800 transition-all duration-300"
                           >
                             {actionLoading[withdrawal.id] ? (
                               <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
@@ -946,12 +975,12 @@ const DashboardAdmin = () => {
                 </div>
               )}
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold text-white mb-4">Historial de retiros</h3>
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Historial de retiros</h3>
               {withdrawalsHistory.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600">
-                    <thead className="bg-gray-700">
+                  <table className="min-w-full divide-y divide-gray-600/50">
+                    <thead className="bg-gray-700/50 backdrop-blur-sm">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Proveedor
@@ -970,17 +999,17 @@ const DashboardAdmin = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-600">
+                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
                       {withdrawalsHistory.map((withdrawal) => (
-                        <tr key={withdrawal.id} className="hover:bg-gray-700 transition-colors">
+                        <tr key={withdrawal.id} className="hover:bg-gray-700/50 transition-all duration-300">
                           <td className="px-4 py-4 whitespace-nowrap text-white">{withdrawal.provider || "Sin proveedor"}</td>
                           <td className="px-4 py-4 whitespace-nowrap text-white">S/ {(withdrawal.amount || 0).toFixed(2)}</td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 withdrawal.status === "approved"
-                                  ? "bg-green-900 text-green-400"
-                                  : "bg-red-900 text-red-400"
+                                  ? "bg-green-900/80 text-green-400"
+                                  : "bg-red-900/80 text-red-400"
                               }`}
                             >
                               {withdrawal.status}
@@ -1003,37 +1032,115 @@ const DashboardAdmin = () => {
           </div>
         );
 
+      case "pedidos":
+        return (
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Ventas General</h3>
+            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center mb-6 border border-gray-600/50">
+              <h4 className="text-lg font-semibold text-cyan-400 mb-2">Total Ventas</h4>
+              <p className="text-3xl font-bold text-white">S/ {totalSales.toFixed(2)}</p>
+              <p className="text-sm text-gray-300 mt-2">Suma de todos los pedidos realizados</p>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Historial de Pedidos</h3>
+            {sales.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-600/50">
+                  <thead className="bg-gray-700/50 backdrop-blur-sm">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Nombre del Producto
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Precio
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Proveedor
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Usuario Comprador
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Fecha y Hora de Compra
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Estado
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        Detalles de la Cuenta
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
+                    {sales.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-gray-700/50 transition-all duration-300">
+                        <td className="px-4 py-4 whitespace-nowrap text-white">{sale.productName || "Sin nombre"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-white">S/ {(sale.price || 0).toFixed(2)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-gray-300">{sale.provider || "Sin proveedor"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-gray-300">{sale.buyerUsername || "Sin usuario"}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-gray-300">{formatDate(sale.purchaseDate)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              getOrderStatus(sale) === "Pendiente"
+                                ? "bg-yellow-900/80 text-yellow-400"
+                                : getOrderStatus(sale) === "Activo"
+                                ? "bg-green-900/80 text-green-400"
+                                : "bg-red-900/80 text-red-400"
+                            }`}
+                          >
+                            {getOrderStatus(sale)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-gray-300">
+                          {sale.accountDetails
+                            ? `Email: ${sale.accountDetails.email || "N/A"}, Contraseña: ${sale.accountDetails.password || "N/A"}, Perfil: ${sale.accountDetails.profile || "N/A"}, PIN: ${sale.accountDetails.pin || "No especificado"}`
+                            : "N/A"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FiShoppingCart className="mx-auto text-4xl text-gray-400 mb-3" />
+                <p className="text-gray-300">No hay pedidos registrados</p>
+              </div>
+            )}
+          </div>
+        );
+
       case "ganancias":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-6xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Reporte de ganancias</h3>
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Reporte de ganancias</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center border border-gray-600/50 shadow-lg">
                 <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias hoy</h4>
                 <p className="text-3xl font-bold text-white">S/ {earnings.day.toFixed(2)}</p>
                 <p className="text-sm text-gray-300 mt-2">(5 soles por usuario)</p>
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center border border-gray-600/50 shadow-lg">
                 <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias esta semana</h4>
                 <p className="text-3xl font-bold text-white">S/ {earnings.week.toFixed(2)}</p>
                 <p className="text-sm text-gray-300 mt-2">(25% del total de usuarios)</p>
               </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 text-center">
+              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center border border-gray-600/50 shadow-lg">
                 <h4 className="text-lg font-semibold text-cyan-400 mb-2">Ganancias este mes</h4>
                 <p className="text-3xl font-bold text-white">S/ {earnings.month.toFixed(2)}</p>
                 <p className="text-sm text-gray-300 mt-2">(5 soles por cada usuario)</p>
               </div>
             </div>
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-6 shadow-sm">
+            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-gray-600/50">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold text-white">Resumen de ganancias</h4>
-                <span className="px-3 py-1 bg-cyan-900 text-cyan-400 rounded-full text-sm">
+                <span className="px-3 py-1 bg-cyan-900/80 text-cyan-400 rounded-full text-sm">
                   Total: S/ {earnings.total.toFixed(2)}
                 </span>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-600">
-                  <thead className="bg-gray-600">
+                <table className="min-w-full divide-y divide-gray-600/50">
+                  <thead className="bg-gray-600/50 backdrop-blur-sm">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                         Concepto
@@ -1046,7 +1153,7 @@ const DashboardAdmin = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-gray-700 divide-y divide-gray-600">
+                  <tbody className="bg-gray-700/50 divide-y divide-gray-600/50">
                     <tr>
                       <td className="px-4 py-3 text-gray-300">Ganancias por usuario</td>
                       <td className="px-4 py-3 text-white">S/ 5.00</td>
@@ -1065,47 +1172,47 @@ const DashboardAdmin = () => {
                   </tbody>
                 </table>
               </div>
-              </div>
+            </div>
           </div>
         );
 
       case "configuracion":
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-white mb-6">Configuración de cuenta</h3>
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-2xl mx-auto border border-gray-700/50">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6">Configuración de cuenta</h3>
             <form onSubmit={handleSaveChanges} className="space-y-4">
               <div>
-                <label className="block text-gray-300 mb-1">Nombre de usuario</label>
+                <label className="block text-gray-300 mb-2">Nombre de usuario</label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                   required
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-1">Correo electrónico</label>
+                <label className="block text-gray-300 mb-2">Correo electrónico</label>
                 <input
                   type="email"
                   value={email}
                   readOnly
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-gray-400 rounded-lg"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-gray-400 border border-gray-600/50 cursor-not-allowed"
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-1">Nueva contraseña (opcional)</label>
+                <label className="block text-gray-300 mb-2">Nueva contraseña (opcional)</label>
                 <input
                   type="password"
                   name="password"
                   placeholder="Nueva contraseña"
-                  className="w-full px-4 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                 />
               </div>
               <button
                 type="submit"
                 disabled={actionLoading.config}
-                className="w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium mt-4 transition-colors disabled:bg-cyan-800"
+                className="w-full py-3 px-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-medium mt-4 transition-all duration-300 disabled:bg-cyan-800"
               >
                 {actionLoading.config ? (
                   <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mx-auto"></div>
@@ -1114,18 +1221,26 @@ const DashboardAdmin = () => {
                 )}
               </button>
             </form>
+            <div className="mt-8 border-t border-gray-600/50 pt-6">
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-900/80 hover:bg-red-800 text-white rounded-xl font-medium transition-all duration-300"
+              >
+                <FiLogOut /> Cerrar sesión
+              </button>
+            </div>
           </div>
         );
 
       default:
         return (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-md text-center max-w-2xl mx-auto">
-            <FiAlertCircle className="mx-auto text-4xl text-yellow-500 mb-4" />
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl text-center max-w-2xl mx-auto border border-gray-700/50">
+            <FiAlertCircle className="mx-auto text-4xl text-yellow-400 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Sección no encontrada</h3>
             <p className="text-gray-300 mb-4">La sección que estás buscando no existe o no está disponible.</p>
             <button
               onClick={() => setActiveSection("inicio")}
-              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
+              className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
             >
               Volver al inicio
             </button>
@@ -1135,12 +1250,12 @@ const DashboardAdmin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
       {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none"
+          className="p-2 rounded-full bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/50 transition-all duration-300 border border-gray-700/50"
         >
           <FiMenu className="text-xl" />
         </button>
@@ -1149,20 +1264,20 @@ const DashboardAdmin = () => {
       <aside
         className={`fixed inset-y-0 left-0 transform ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-800 overflow-y-auto`}
+        } md:translate-x-0 transition-transform duration-300 ease-in-out z-40 w-64 bg-gray-900/90 backdrop-blur-md border-r border-gray-800/50 overflow-y-auto`}
       >
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
             <button
               onClick={() => setMenuOpen(false)}
-              className="md:hidden p-1 rounded-lg hover:bg-gray-700"
+              className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiX className="text-lg" />
             </button>
           </div>
-          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-700 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold">
+          <div className="flex items-center space-x-3 mb-8 p-3 bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50">
+            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-bold">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -1172,49 +1287,78 @@ const DashboardAdmin = () => {
           </div>
           <nav className="flex-1 space-y-1">
             <button
-              onClick={() => setActiveSection("inicio")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "inicio" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("inicio");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "inicio" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiHome /> <span>Inicio</span>
             </button>
             <button
-              onClick={() => setActiveSection("recargas")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "recargas" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("recargas");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "recargas" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiDollarSign /> <span>Recargas</span>
             </button>
             <button
-              onClick={() => setActiveSection("retiros")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "retiros" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("retiros");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "retiros" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiArrowRight /> <span>Retiros</span>
             </button>
             <button
-              onClick={() => setActiveSection("usuarios")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "usuarios" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("usuarios");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "usuarios" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiUsers /> <span>Usuarios</span>
             </button>
             <button
-              onClick={() => setActiveSection("ganancias")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "ganancias" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("pedidos");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "pedidos" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
+              }`}
+            >
+              <FiShoppingCart /> <span>Pedidos</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveSection("ganancias");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "ganancias" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiTrendingUp /> <span>Ganancias</span>
             </button>
             <button
-              onClick={() => setActiveSection("configuracion")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                activeSection === "configuracion" ? "bg-cyan-900 text-white" : "text-gray-300 hover:bg-gray-700"
+              onClick={() => {
+                setActiveSection("configuracion");
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                activeSection === "configuracion" ? "bg-cyan-900/80 text-white" : "text-gray-300 hover:bg-gray-700/50"
               }`}
             >
               <FiSettings /> <span>Configuración</span>
@@ -1223,7 +1367,7 @@ const DashboardAdmin = () => {
           <div className="mt-auto pt-4">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700/50 transition-all duration-300"
             >
               <FiLogOut /> <span>Cerrar sesión</span>
             </button>
@@ -1231,11 +1375,11 @@ const DashboardAdmin = () => {
         </div>
       </aside>
       {/* Main content */}
-      <main className="md:ml-64 p-4 pt-20 md:pt-4">{renderContent()}</main>
+      <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">{renderContent()}</main>
       {/* Overlay for mobile menu */}
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setMenuOpen(false)}
         ></div>
       )}
@@ -1243,8 +1387,8 @@ const DashboardAdmin = () => {
       <NotificationModal
         isOpen={modal.isOpen}
         message={modal.message}
-        type={modal.type}
-        onClose={() => setModal({ isOpen: false, message: "", type: "success" })}
+        title={modal.title}
+        onClose={closeModal}
       />
     </div>
   );

@@ -394,6 +394,7 @@ const DashboardAdmin = () => {
         email: registration.email,
         role: registration.role || "usuario",
         balance: 0,
+        referrerCode: registration.referrerCode || null, // Store referrerCode
         createdAt: serverTimestamp(),
       });
       await updateDoc(registrationRef, {

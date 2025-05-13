@@ -21,7 +21,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { FaSearch } from "react-icons/fa";
-import { db, auth } from "../firebase"; // Ajusta la ruta según tu configuración
+import { db, auth } from "../firebase";
 import {
   doc,
   getDoc,
@@ -37,7 +37,6 @@ import {
   updateDoc,
   getDocs,
   Timestamp,
-  runTransaction,
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut, updatePassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -65,12 +64,12 @@ const DashboardAffiliate = () => {
   const [modal, setModal] = useState({ show: false, message: "", title: "" });
   const navigate = useNavigate();
 
-  // Función para mostrar el modal
+  // Function to show modal
   const showModal = (title, message) => {
-    setModal({ show: true, title: title || "Notificación", message: message || "" });
+    setModal({ show: true, title, message });
   };
 
-  // Función para cerrar el modal
+  // Function to close modal
   const closeModal = () => {
     setModal({ show: false, message: "", title: "" });
   };
@@ -90,7 +89,7 @@ const DashboardAffiliate = () => {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Obtener productos para términos y condiciones
+  // Fetch products to get terms and conditions
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -102,7 +101,7 @@ const DashboardAffiliate = () => {
         });
         setProducts(productsData);
       } catch (error) {
-        console.error("Error al obtener productos:", error);
+        console.error("Error fetching products:", error);
         setError("Error al cargar productos");
       }
     };
@@ -168,8 +167,6 @@ const DashboardAffiliate = () => {
     const topUpsRef = collection(db, "pendingTopUps");
     const q = query(topUpsRef, where("userId", "==", userId));
 
-    let previousTopUps = new Map();
-
     const unsubscribe = onSnapshot(
       q,
       async (snapshot) => {
@@ -181,67 +178,34 @@ const DashboardAffiliate = () => {
         }));
         setTopUps(topUpsList);
 
+        // Procesar recargas aprobadas
         for (const topUp of topUpsList) {
-          // Verificar si la recarga ya fue procesada o no está aprobada
-          if (topUp.status !== "aprobado" || topUp.processed) {
-            continue;
-          }
-
-          const previousTopUp = previousTopUps.get(topUp.id);
-          const isNewlyApproved = !previousTopUp || previousTopUp.status !== "aprobado";
-
-          if (isNewlyApproved) {
+          if (topUp.status === "aprobado" && !topUp.processed) {
             try {
-              await runTransaction(db, async (transaction) => {
-                const topUpRef = doc(db, "pendingTopUps", topUp.id);
-                const userRef = doc(db, "users", userId);
-
-                // Obtener documentos dentro de la transacción
-                const topUpDoc = await transaction.get(topUpRef);
-                if (!topUpDoc.exists()) {
-                  throw new Error("La recarga no existe");
-                }
-
-                const topUpData = topUpDoc.data();
-                // Doble verificación dentro de la transacción
-                if (topUpData.processed || topUpData.status !== "aprobado") {
-                  return;
-                }
-
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists()) {
-                  throw new Error("El usuario no existe");
-                }
-
+              const userRef = doc(db, "users", userId);
+              const userDoc = await getDoc(userRef);
+              if (userDoc.exists()) {
                 const currentBalance = Number(userDoc.data().balance) || 0;
-                const amountToAdd = Number(topUp.amount) || 0;
-                const newBalance = currentBalance + amountToAdd;
+                const newBalance = currentBalance + Number(topUp.amount || 0);
 
-                // Actualizar el saldo del usuario
-                transaction.update(userRef, {
+                await updateDoc(userRef, {
                   balance: newBalance,
                   updatedAt: serverTimestamp(),
                 });
 
-                // Marcar la recarga como procesada
-                transaction.update(topUpRef, {
+                setBalance(newBalance);
+
+                await updateDoc(doc(db, "pendingTopUps", topUp.id), {
                   processed: true,
-                  processedAt: serverTimestamp(),
                   updatedAt: serverTimestamp(),
                 });
-
-                // Actualizar el estado local
-                setBalance(newBalance);
-              });
+              }
             } catch (error) {
-              console.error("Error al procesar recarga:", error);
+              console.error("Error al actualizar saldo:", error);
               setError("Error al actualizar saldo tras aprobación de recarga");
             }
           }
         }
-
-        // Actualizar el mapa de recargas anteriores
-        previousTopUps = new Map(topUpsList.map((topUp) => [topUp.id, { ...topUp }]));
       },
       (error) => {
         console.error("Error al escuchar recargas:", error);
@@ -1417,7 +1381,7 @@ const DashboardAffiliate = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200">
-      {/* Botón de menú móvil */}
+      {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -1427,7 +1391,7 @@ const DashboardAffiliate = () => {
         </button>
       </div>
 
-      {/* Barra lateral */}
+      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 transform ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
@@ -1435,7 +1399,7 @@ const DashboardAffiliate = () => {
       >
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-white">BlackStreaming</h2>
+            <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
             <button
               onClick={() => setMenuOpen(false)}
               className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
@@ -1539,10 +1503,10 @@ const DashboardAffiliate = () => {
         </div>
       </aside>
 
-      {/* Contenido principal */}
+      {/* Main content */}
       <main className="md:ml-64 p-4 sm:p-6 pt-20 md:pt-6">{renderContent()}</main>
 
-      {/* Modal para alertas */}
+      {/* Modal for Alerts */}
       {modal.show && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
@@ -1568,6 +1532,14 @@ const DashboardAffiliate = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Overlay for mobile menu */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setMenuOpen(false)}
+        ></div>
       )}
     </div>
   );

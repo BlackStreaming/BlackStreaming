@@ -343,32 +343,86 @@ const DashboardUser = () => {
 
   // Cargar recargas
   useEffect(() => {
-    if (!userId) return;
+  if (!userId) return;
 
-    const fetchTopUps = () => {
-      const q = query(collection(db, "pendingTopUps"), where("userId", "==", userId));
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const topUpsList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            date: doc.data().requestedAt?.toDate?.() || new Date(),
-            amount: parseFloat(doc.data().amount) || 0,
-          }));
-          setTopUps(topUpsList);
-        },
-        (error) => {
-          console.error("Error al obtener recargas:", error);
-          setError("Error al cargar recargas");
+  const topUpsRef = collection(db, "pendingTopUps");
+  const q = query(topUpsRef, where("userId", "==", userId));
+
+  // Conjunto para rastrear recargas en procesamiento
+  const processingTopUps = new Set();
+
+  const unsubscribe = onSnapshot(
+    q,
+    async (snapshot) => {
+      const topUpsList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().requestedAt?.toDate?.() || new Date(),
+        amount: parseFloat(doc.data().amount) || 0,
+      }));
+      setTopUps(topUpsList);
+
+      // Procesar recargas aprobadas
+      for (const topUp of topUpsList) {
+        if (topUp.status === "aprobado" && !topUp.processed && !processingTopUps.has(topUp.id)) {
+          processingTopUps.add(topUp.id); // Marcar como en procesamiento
+
+          try {
+            await runTransaction(db, async (transaction) => {
+              const topUpRef = doc(db, "pendingTopUps", topUp.id);
+              const userRef = doc(db, "users", userId);
+
+              // Obtener el estado actual de la recarga
+              const topUpDoc = await transaction.get(topUpRef);
+              if (!topUpDoc.exists()) {
+                throw new Error("La recarga no existe");
+              }
+
+              const topUpData = topUpDoc.data();
+              if (topUpData.processed || topUpData.status !== "aprobado") {
+                return; // Ya procesada o no aprobada, salir
+              }
+
+              // Obtener el saldo actual del usuario
+              const userDoc = await transaction.get(userRef);
+              if (!userDoc.exists()) {
+                throw new Error("El usuario no existe");
+              }
+
+              const currentBalance = Number(userDoc.data().balance) || 0;
+              const newBalance = currentBalance + Number(topUp.amount || 0);
+
+              // Actualizar el saldo del usuario
+              transaction.update(userRef, {
+                balance: newBalance,
+                updatedAt: serverTimestamp(),
+              });
+
+              // Marcar la recarga como procesada
+              transaction.update(topUpRef, {
+                processed: true,
+                updatedAt: serverTimestamp(),
+              });
+            });
+
+            setBalance((prev) => prev + Number(topUp.amount || 0));
+          } catch (error) {
+            console.error("Error al procesar recarga:", error);
+            setError("Error al actualizar saldo tras aprobación de recarga");
+          } finally {
+            processingTopUps.delete(topUp.id); // Liberar el ID
+          }
         }
-      );
+      }
+    },
+    (error) => {
+      console.error("Error al escuchar recargas:", error);
+      setError("Error al cargar recargas");
+    }
+  );
 
-      return unsubscribe;
-    };
-
-    fetchTopUps();
-  }, [userId]);
+  return () => unsubscribe();
+}, [userId]);
 
   // Solicitar recarga
   const handleTopUpRequest = async () => {

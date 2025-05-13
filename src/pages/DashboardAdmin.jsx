@@ -1149,7 +1149,7 @@ const DashboardAdmin = () => {
 
       case "pedidos":
         return (
-          <div class = "w-6xl mx-auto border border-gray-700/50">
+          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Ventas General</h3>
             <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center mb-6 border border-gray-600/50">
               <h4 className="text-lg font-semibold text-cyan-400 mb-2">Total Ventas</h4>

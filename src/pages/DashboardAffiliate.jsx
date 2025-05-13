@@ -21,7 +21,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { FaSearch } from "react-icons/fa";
-import { db, auth } from "../firebase";
+import { db, auth } from "../firebase"; // Adjust path to your Firebase config
 import {
   doc,
   getDoc,
@@ -37,6 +37,7 @@ import {
   updateDoc,
   getDocs,
   Timestamp,
+  runTransaction,
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut, updatePassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -66,7 +67,7 @@ const DashboardAffiliate = () => {
 
   // Function to show modal
   const showModal = (title, message) => {
-    setModal({ show: true, title, message });
+    setModal({ show: true, title: title || "Notification", message: message || "" });
   };
 
   // Function to close modal
@@ -167,6 +168,8 @@ const DashboardAffiliate = () => {
     const topUpsRef = collection(db, "pendingTopUps");
     const q = query(topUpsRef, where("userId", "==", userId));
 
+    let previousTopUps = new Map(); // Almacena el estado anterior de las recargas
+
     const unsubscribe = onSnapshot(
       q,
       async (snapshot) => {
@@ -178,34 +181,63 @@ const DashboardAffiliate = () => {
         }));
         setTopUps(topUpsList);
 
-        // Procesar recargas aprobadas
+        // Procesar solo recargas que cambiaron a "aprobado"
         for (const topUp of topUpsList) {
-          if (topUp.status === "aprobado" && !topUp.processed) {
+          const previousTopUp = previousTopUps.get(topUp.id);
+          const isNewlyApproved =
+            topUp.status === "aprobado" &&
+            !topUp.processed &&
+            (!previousTopUp || previousTopUp.status !== "aprobado");
+
+          if (isNewlyApproved) {
             try {
-              const userRef = doc(db, "users", userId);
-              const userDoc = await getDoc(userRef);
-              if (userDoc.exists()) {
+              await runTransaction(db, async (transaction) => {
+                const topUpRef = doc(db, "pendingTopUps", topUp.id);
+                const userRef = doc(db, "users", userId);
+
+                // Verificar el estado actual de la recarga
+                const topUpDoc = await transaction.get(topUpRef);
+                if (!topUpDoc.exists()) {
+                  throw new Error("La recarga no existe");
+                }
+                const topUpData = topUpDoc.data();
+                if (topUpData.processed || topUpData.status !== "aprobado") {
+                  return; // No procesar si ya está procesada o no está aprobada
+                }
+
+                // Obtener el saldo actual del usuario
+                const userDoc = await transaction.get(userRef);
+                if (!userDoc.exists()) {
+                  throw new Error("El usuario no existe");
+                }
                 const currentBalance = Number(userDoc.data().balance) || 0;
                 const newBalance = currentBalance + Number(topUp.amount || 0);
 
-                await updateDoc(userRef, {
+                // Actualizar el saldo del usuario
+                transaction.update(userRef, {
                   balance: newBalance,
                   updatedAt: serverTimestamp(),
                 });
 
-                setBalance(newBalance);
-
-                await updateDoc(doc(db, "pendingTopUps", topUp.id), {
+                // Marcar la recarga como procesada
+                transaction.update(topUpRef, {
                   processed: true,
+                  processedAt: serverTimestamp(),
                   updatedAt: serverTimestamp(),
                 });
-              }
+
+                // Actualizar el estado local
+                setBalance(newBalance);
+              });
             } catch (error) {
-              console.error("Error al actualizar saldo:", error);
+              console.error("Error al procesar recarga:", error);
               setError("Error al actualizar saldo tras aprobación de recarga");
             }
           }
         }
+
+        // Actualizar el mapa de recargas anteriores
+        previousTopUps = new Map(topUpsList.map((topUp) => [topUp.id, topUp]));
       },
       (error) => {
         console.error("Error al escuchar recargas:", error);
@@ -1399,7 +1431,7 @@ const DashboardAffiliate = () => {
       >
         <div className="p-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
+            <h2 className="text-xl font-bold text-white">BlackStreaming</h2>
             <button
               onClick={() => setMenuOpen(false)}
               className="md:hidden p-1 rounded-full hover:bg-gray-700/50 transition-all duration-300"
@@ -1532,14 +1564,6 @@ const DashboardAffiliate = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Overlay for mobile menu */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
-          onClick={() => setMenuOpen(false)}
-        ></div>
       )}
     </div>
   );

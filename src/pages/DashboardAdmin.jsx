@@ -14,6 +14,7 @@ import {
   FiX,
   FiCheck,
   FiShoppingCart,
+  FiEdit,
 } from "react-icons/fi";
 import { FaSearch } from "react-icons/fa";
 import { db, auth } from "../firebase";
@@ -70,6 +71,72 @@ const NotificationModal = ({ isOpen, message, title, onClose }) => {
   );
 };
 
+// Modal Component for Editing Balance
+const EditBalanceModal = ({ isOpen, user, onClose, onSave }) => {
+  const [newBalance, setNewBalance] = useState(user?.balance || 0);
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+    if (isNaN(newBalance) || newBalance < 0) {
+      setError("Por favor, ingrese un saldo válido (número no negativo).");
+      return;
+    }
+    onSave(user.id, parseFloat(newBalance));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Editar Saldo de {user.username}</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-all duration-300"
+            >
+              <FiX size={20} />
+            </button>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-2">Nuevo Saldo (S/)</label>
+              <input
+                type="number"
+                value={newBalance}
+                onChange={(e) => setNewBalance(e.target.value)}
+                className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
+                min="0"
+                step="0.01"
+                required
+              />
+              {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600 transition-all duration-300"
+              >
+                Guardar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DashboardAdmin = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("inicio");
@@ -91,6 +158,7 @@ const DashboardAdmin = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal] = useState({ isOpen: false, message: "", title: "" });
+  const [editBalanceModal, setEditBalanceModal] = useState({ isOpen: false, user: null });
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const navigate = useNavigate();
 
@@ -102,6 +170,35 @@ const DashboardAdmin = () => {
   // Function to close modal
   const closeModal = () => {
     setModal({ isOpen: false, message: "", title: "" });
+  };
+
+  // Function to open edit balance modal
+  const openEditBalanceModal = (user) => {
+    setEditBalanceModal({ isOpen: true, user });
+  };
+
+  // Function to close edit balance modal
+  const closeEditBalanceModal = () => {
+    setEditBalanceModal({ isOpen: false, user: null });
+  };
+
+  // Function to update user balance
+  const updateUserBalance = async (userId, newBalance) => {
+    try {
+      setActionLoading((prev) => ({ ...prev, [`balance_${userId}`]: true }));
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        balance: newBalance,
+        updatedAt: serverTimestamp(),
+      });
+      showModal("Éxito", "Saldo actualizado exitosamente");
+      closeEditBalanceModal();
+    } catch (error) {
+      console.error("Error al actualizar saldo:", error);
+      showModal("Error", error.message || "Error al actualizar el saldo");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`balance_${userId}`]: false }));
+    }
   };
 
   // Verificar autenticación
@@ -394,7 +491,7 @@ const DashboardAdmin = () => {
         email: registration.email,
         role: registration.role || "usuario",
         balance: 0,
-        referrerCode: registration.referrerCode || null, // Store referrerCode
+        referrerCode: registration.referrerCode || null,
         createdAt: serverTimestamp(),
       });
       await updateDoc(registrationRef, {
@@ -574,7 +671,7 @@ const DashboardAdmin = () => {
               <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
                 <h3 className="text-lg font-semibold text-cyan-400 mb-3">Usuarios registrados</h3>
                 <p className="text-3xl font-bold text-white">{totalUsers}</p>
-                <p className="text-sm text-gray-300 mt-1">Total ganancias: S/ {earnings.total.toFixed(2)}</p>
+                <p className="text-sm text-gray-300 mt-1">Total Gananacias: S/ {earnings.total.toFixed(2)}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -750,6 +847,9 @@ const DashboardAdmin = () => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                           Saldo
                         </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
@@ -770,6 +870,20 @@ const DashboardAdmin = () => {
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap text-white">
                               S/ {(user.balance || 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <button
+                                onClick={() => openEditBalanceModal(user)}
+                                disabled={actionLoading[`balance_${user.id}`]}
+                                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-300 disabled:bg-blue-800"
+                                title="Editar Saldo"
+                              >
+                                {actionLoading[`balance_${user.id}`] ? (
+                                  <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
+                                ) : (
+                                  <FiEdit size={16} />
+                                )}
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -1035,7 +1149,7 @@ const DashboardAdmin = () => {
 
       case "pedidos":
         return (
-          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+          <div class = "w-6xl mx-auto border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">Ventas General</h3>
             <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-6 text-center mb-6 border border-gray-600/50">
               <h4 className="text-lg font-semibold text-cyan-400 mb-2">Total Ventas</h4>
@@ -1390,6 +1504,13 @@ const DashboardAdmin = () => {
         message={modal.message}
         title={modal.title}
         onClose={closeModal}
+      />
+      {/* Edit Balance Modal */}
+      <EditBalanceModal
+        isOpen={editBalanceModal.isOpen}
+        user={editBalanceModal.user}
+        onClose={closeEditBalanceModal}
+        onSave={updateUserBalance}
       />
     </div>
   );

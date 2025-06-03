@@ -213,30 +213,26 @@ const DashboardUser = () => {
 
   // Fetch notifications
   useEffect(() => {
-    const fetchNotifications = () => {
-      const unsubscribe = onSnapshot(
-        doc(db, "notifications", "adminMessage"),
-        (docSnapshot) => {
-          if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            const userRole = "user";
-            if (data.roles && data.roles.includes(userRole)) {
-              setNotifications([{ id: docSnapshot.id, ...data }]);
-            } else {
-              setNotifications([]);
-            }
+    const unsubscribe = onSnapshot(
+      doc(db, "notifications", "adminMessage"),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          const userRole = "user";
+          if (data.roles && data.roles.includes(userRole)) {
+            setNotifications([{ id: docSnapshot.id, ...data }]);
           } else {
             setNotifications([]);
           }
-        },
-        (error) => {
-          console.error("Error in notifications listener:", error);
-          setError("Error al cargar notificaciones: " + error.message);
+        } else {
+          setNotifications([]);
         }
-      );
-      return unsubscribe;
-    };
-    const unsubscribe = fetchNotifications();
+      },
+      (error) => {
+        console.error("Error in notifications listener:", error);
+        setError("Error al cargar notificaciones: " + error.message);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -253,12 +249,10 @@ const DashboardUser = () => {
       const durationDays = parseInt(order.durationDays) || 30;
       const nowTimestamp = Timestamp.now();
       const nowDate = nowTimestamp.toDate();
-      // Use the current date as the start date for the renewal
       const startDate = nowDate;
       const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
       const endDateTimestamp = Timestamp.fromDate(endDate);
 
-      // Update the existing order in Firestore
       const orderRef = doc(db, "sales", order.id);
       await updateDoc(orderRef, {
         startDate: nowTimestamp,
@@ -268,13 +262,11 @@ const DashboardUser = () => {
         updatedAt: serverTimestamp(),
       });
 
-      // Update user balance
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         balance: balance - renewalPrice,
       });
 
-      // Update local state
       setBalance((prev) => prev - renewalPrice);
       setOrders((prev) =>
         prev.map((o) =>
@@ -331,200 +323,181 @@ const DashboardUser = () => {
   useEffect(() => {
     if (!userId) return;
 
-    const fetchUserData = async () => {
-      try {
-        const userDocRef = doc(db, "users", userId);
-        const unsubscribe = onSnapshot(
-          userDocRef,
-          (userDoc) => {
-            if (userDoc.exists()) {
-              const userData = userDoc.data();
-              setUserName({
-                username: userData.username || "Usuario",
-                phone: userData.phone || "",
-              });
-              setEmail(userData.email || "No especificado");
-              setBalance(Number(userData.balance) || 0);
-            } else {
-              setError("Usuario no encontrado");
-            }
-          },
-          (error) => {
-            console.error("Error in user data listener:", error);
-            setError("Error al cargar datos del usuario: " + error.message);
-          }
-        );
-        return unsubscribe;
-      } catch (error) {
-        console.error("Error al obtener datos del usuario:", error);
+    const userDocRef = doc(db, "users", userId);
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (userDoc) => {
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserName({
+            username: userData.username || "Usuario",
+            phone: userData.phone || "",
+          });
+          setEmail(userData.email || "No especificado");
+          setBalance(Number(userData.balance) || 0);
+        } else {
+          setError("Usuario no encontrado");
+        }
+      },
+      (error) => {
+        console.error("Error in user data listener:", error);
         setError("Error al cargar datos del usuario: " + error.message);
       }
-    };
+    );
 
-    const unsubscribe = fetchUserData();
-    return () => unsubscribe && unsubscribe();
+    return () => unsubscribe();
   }, [userId]);
 
   // Fetch orders
   useEffect(() => {
     if (!userId) return;
 
-    const fetchOrders = () => {
-      const q = query(collection(db, "sales"), where("customerId", "==", userId));
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          if (snapshot.empty) {
-            setOrders([]);
-            setLoading(false);
-            return;
+    const q = query(collection(db, "sales"), where("customerId", "==", userId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setOrders([]);
+          setLoading(false);
+          return;
+        }
+
+        const formattedOrders = snapshot.docs.map((saleDoc) => {
+          const data = saleDoc.data();
+          const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.() || new Date();
+          const saleDate = saleDateRaw;
+
+          let startDateRaw = data.startDate?.toDate?.();
+          let startDate = startDateRaw || saleDate;
+          let shouldUpdateFirestore = false;
+
+          if (!startDateRaw) {
+            shouldUpdateFirestore = true;
           }
 
-          const formattedOrders = snapshot.docs.map((saleDoc) => {
-            const data = saleDoc.data();
-            const saleDateRaw = data.saleDate?.toDate?.() || data.createdAt?.toDate?.() || new Date();
-            const saleDate = saleDateRaw;
+          const durationDays = data.durationDays || 30;
+          let endDate;
 
-            let startDateRaw = data.startDate?.toDate?.();
-            let startDate = startDateRaw || saleDate;
-            let shouldUpdateFirestore = false;
+          if (data.endDate) {
+            endDate = data.endDate.toDate ? data.endDate.toDate() : new Date(data.endDate);
+          } else {
+            endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+            shouldUpdateFirestore = true;
+          }
 
-            if (!startDateRaw) {
-              shouldUpdateFirestore = true;
-            }
-
-            const durationDays = data.durationDays || 30;
-            let endDate;
-
-            if (data.endDate) {
-              endDate = data.endDate.toDate ? data.endDate.toDate() : new Date(data.endDate);
-            } else {
-              endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
-              shouldUpdateFirestore = true;
-            }
-
-            if (shouldUpdateFirestore) {
-              updateDoc(doc(db, "sales", saleDoc.id), {
-                startDate: startDateRaw || Timestamp.fromDate(saleDate),
-                endDate: Timestamp.fromDate(endDate),
-                durationDays: durationDays,
-              }).catch((error) => {
-                console.error("Error al actualizar startDate/endDate en Firestore:", error);
-              });
-            }
-
-            const now = new Date();
-            const totalDurationMs = endDate.getTime() - startDate.getTime();
-            const elapsedMs = now.getTime() - startDate.getTime();
-            const remainingMs = endDate.getTime() - now.getTime();
-
-            const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
-            const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
-            const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
-            const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
-
-            const productTerms = products[data.providerId]?.terms || "No se especificaron términos y condiciones.";
-
-            return {
-              id: saleDoc.id,
-              productName: data.productName || "Producto sin nombre",
-              category: data.type || "netflix",
-              price: parseFloat(data.price) || 0,
-              renewalPrice: parseFloat(data.renewalPrice) || parseFloat(data.price) || 0,
-              provider: data.provider || "No especificado",
-              providerId: data.providerId || "",
-              providerPhone: data.providerPhone || data.providerWhatsapp || "51999999999",
-              status: data.status || "completed",
-              saleDate: saleDate,
-              startDate: startDate,
-              endDate: endDate,
+          if (shouldUpdateFirestore) {
+            updateDoc(doc(db, "sales", saleDoc.id), {
+              startDate: startDateRaw || Timestamp.fromDate(saleDate),
+              endDate: Timestamp.fromDate(endDate),
               durationDays: durationDays,
-              daysRemaining: daysRemaining,
-              totalDays: totalDays,
-              timeElapsedPercentage: timeElapsedPercentage,
-              account: {
-                email: data.accountDetails?.email || "No especificado",
-                password: data.accountDetails?.password || "No especificado",
-                profile: data.accountDetails?.profile || "No especificado",
-                pin: data.accountDetails?.pin || "No especificado",
-              },
-              client: {
-                customerName: data.customerName || "Cliente desconocido",
-                email: data.customerEmail || "No especificado",
-                phone: data.phoneNumber || "No especificado",
-              },
-              paymentMethod: "BlackStreaming",
-              orderId: `BS-${saleDoc.id.slice(0, 8).toUpperCase()}`,
-              termsAndConditions: productTerms,
-              renewable: data.renewable !== undefined ? data.renewable : true,
-            };
-          });
+            }).catch((error) => {
+              console.error("Error al actualizar startDate/endDate en Firestore:", error);
+            });
+          }
 
-          setOrders(formattedOrders);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error al obtener pedidos:", error);
-          setError("Error al cargar pedidos: " + error.message);
-          setLoading(false);
-        }
+          const now = new Date();
+          const totalDurationMs = endDate.getTime() - startDate.getTime();
+          const elapsedMs = now.getTime() - startDate.getTime();
+          const remainingMs = endDate.getTime() - now.getTime();
+
+          const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
+          const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+          const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
+          const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
+
+          const productTerms = products[data.providerId]?.terms || "No se especificaron términos y condiciones.";
+
+          return {
+            id: saleDoc.id,
+            productName: data.productName || "Producto sin nombre",
+            category: data.type || "netflix",
+            price: parseFloat(data.price) || 0,
+            renewalPrice: parseFloat(data.renewalPrice) || parseFloat(data.price) || 0,
+            provider: data.provider || "No especificado",
+            providerId: data.providerId || "",
+            providerPhone: data.providerPhone || data.providerWhatsapp || "51999999999",
+            status: data.status || "completed",
+            saleDate: saleDate,
+            startDate: startDate,
+            endDate: endDate,
+            durationDays: durationDays,
+            daysRemaining: daysRemaining,
+            totalDays: totalDays,
+            timeElapsedPercentage: timeElapsedPercentage,
+            account: {
+              email: data.accountDetails?.email || "No especificado",
+              password: data.accountDetails?.password || "No especificado",
+              profile: data.accountDetails?.profile || "No especificado",
+              pin: data.accountDetails?.pin || "No especificado",
+            },
+            client: {
+              customerName: data.customerName || "Cliente desconocido",
+              email: data.customerEmail || "No especificado",
+              phone: data.phoneNumber || "No especificado",
+            },
+            paymentMethod: "BlackStreaming",
+            orderId: `BS-${saleDoc.id.slice(0, 8).toUpperCase()}`,
+            termsAndConditions: productTerms,
+            renewable: data.renewable !== undefined ? data.renewable : true,
+          };
+        });
+
+        setOrders(formattedOrders);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error al obtener pedidos:", error);
+        setError("Error al cargar pedidos: " + error.message);
+        setLoading(false);
+      }
+    );
+
+    const interval = setInterval(() => {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          const now = new Date();
+          const totalDurationMs = new Date(order.endDate).getTime() - new Date(order.startDate).getTime();
+          const elapsedMs = now.getTime() - new Date(order.startDate).getTime();
+          const remainingMs = new Date(order.endDate).getTime() - now.getTime();
+
+          const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
+          const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+          const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
+          const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
+
+          return { ...order, daysRemaining, totalDays, timeElapsedPercentage };
+        })
       );
+    }, 60000);
 
-      const interval = setInterval(() => {
-        setOrders((prevOrders) =>
-          prevOrders.map((order) => {
-            const now = new Date();
-            const totalDurationMs = new Date(order.endDate).getTime() - new Date(order.startDate).getTime();
-            const elapsedMs = now.getTime() - new Date(order.startDate).getTime();
-            const remainingMs = new Date(order.endDate).getTime() - now.getTime();
-
-            const totalDays = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
-            const daysRemaining = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
-            const elapsedDays = Math.ceil(elapsedMs / (1000 * 60 * 60 * 24));
-            const timeElapsedPercentage = totalDays > 0 ? (elapsedDays / totalDays) * 100 : 100;
-
-            return { ...order, daysRemaining, totalDays, timeElapsedPercentage };
-          })
-        );
-      }, 60000);
-
-      return () => {
-        unsubscribe();
-        clearInterval(interval);
-      };
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
     };
-
-    const unsubscribe = fetchOrders();
-    return () => unsubscribe && unsubscribe();
   }, [userId, products]);
 
   // Fetch top-ups
   useEffect(() => {
     if (!userId) return;
 
-    const fetchTopUps = () => {
-      const q = query(collection(db, "pendingTopUps"), where("userId", "==", userId));
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const topUpsList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            date: doc.data().requestedAt?.toDate?.() || new Date(),
-            amount: parseFloat(doc.data().amount) || 0,
-          }));
-          setTopUps(topUpsList);
-        },
-        (error) => {
-          console.error("Error al obtener recargas:", error);
-          setError("Error al cargar recargas: " + error.message);
-        }
-      );
+    const q = query(collection(db, "pendingTopUps"), where("userId", "==", userId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const topUpsList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().requestedAt?.toDate?.() || new Date(),
+          amount: parseFloat(doc.data().amount) || 0,
+        }));
+        setTopUps(topUpsList);
+      },
+      (error) => {
+        console.error("Error al obtener recargas:", error);
+        setError("Error al cargar recargas: " + error.message);
+      }
+    );
 
-      return unsubscribe;
-    };
-
-    const unsubscribe = fetchTopUps();
     return () => unsubscribe();
   }, [userId]);
 
@@ -706,16 +679,13 @@ const DashboardUser = () => {
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-white">{order.productName}</p>
                           <span
-                            className={`
-                              text-xs px-2 py-1 rounded-full
-                              ${
-                                order.status === "pending"
-                                  ? "bg-yellow-900/80 text-yellow-400"
-                                  : isActive
-                                  ? "bg-green-900/80 text-green-400"
-                                  : "bg-red-900/80 text-red-400"
-                              }
-                            `}
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              order.status === "pending"
+                                ? "bg-yellow-900/80 text-yellow-400"
+                                : isActive
+                                ? "bg-green-900/80 text-green-400"
+                                : "bg-red-900/80 text-red-400"
+                            }`}
                           >
                             {isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}
                           </span>

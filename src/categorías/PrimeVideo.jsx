@@ -369,6 +369,19 @@ const PrimeVideo = () => {
             throw new Error("Proveedor no encontrado");
           }
 
+          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
+          const providerBalanceDoc = await transaction.get(providerBalanceRef);
+          let currentProviderBalance = 0;
+          if (providerBalanceDoc.exists()) {
+            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
+          } else {
+            transaction.set(providerBalanceRef, {
+              balance: 0,
+              provider: selectedProduct.providerId,
+              updatedAt: serverTimestamp(),
+            });
+          }
+
           let providerPhone = selectedProduct.providerPhone || "";
           if (!providerPhone) {
             providerPhone = providerDoc.data().phoneNumber || "";
@@ -452,19 +465,6 @@ const PrimeVideo = () => {
             sales: [...providerSales, saleData],
           });
 
-          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
-          const providerBalanceDoc = await transaction.get(providerBalanceRef);
-          let currentProviderBalance = 0;
-          if (providerBalanceDoc.exists()) {
-            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
-          } else {
-            transaction.set(providerBalanceRef, {
-              balance: 0,
-              provider: selectedProduct.providerId,
-              updatedAt: serverTimestamp(),
-            });
-          }
-
           const newProviderBalance = currentProviderBalance + selectedProduct.price;
           transaction.set(providerBalanceRef, {
             balance: newProviderBalance,
@@ -503,6 +503,19 @@ const PrimeVideo = () => {
           const providerDoc = await transaction.get(providerRef);
           if (!providerDoc.exists()) {
             throw new Error("Proveedor no encontrado");
+          }
+
+          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
+          const providerBalanceDoc = await transaction.get(providerBalanceRef);
+          let currentProviderBalance = 0;
+          if (providerBalanceDoc.exists()) {
+            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
+          } else {
+            transaction.set(providerBalanceRef, {
+              balance: 0,
+              provider: selectedProduct.providerId,
+              updatedAt: serverTimestamp(),
+            });
           }
 
           let providerPhone = selectedProduct.providerPhone || "";
@@ -568,19 +581,6 @@ const PrimeVideo = () => {
             balance: newProviderBalanceUsers,
             sales: [...providerSales, saleData],
           });
-
-          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
-          const providerBalanceDoc = await transaction.get(providerBalanceRef);
-          let currentProviderBalance = 0;
-          if (providerBalanceDoc.exists()) {
-            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
-          } else {
-            transaction.set(providerBalanceRef, {
-              balance: 0,
-              provider: selectedProduct.providerId,
-              updatedAt: serverTimestamp(),
-            });
-          }
 
           const newProviderBalance = currentProviderBalance + selectedProduct.price;
           transaction.set(providerBalanceRef, {
@@ -701,7 +701,7 @@ const PrimeVideo = () => {
       );
     }
     return (
-      <div className="absolute top-0 left-0 w-24 h-8 bg-red-500 text-white flex items-center justify-center transform -rotate-45 -translate-x-6 translate-y-3 shadow-md rounded-br-lg">
+      <div className="absolute top-0 left-0 w-24 h-8 bg-gray-500 text-white flex items-center justify-center transform -rotate-45 -translate-x-6 translate-y-3 shadow-md rounded-br-lg">
         <span className="text-xs font-bold uppercase tracking-tight">
           Agotado
         </span>
@@ -736,7 +736,7 @@ const PrimeVideo = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-200">
-        <FiLoader className="animate-spin text-5xl text-blue-500 mb-4" />
+        <FiLoader className="animate-spin text-5xl text-blue-400 mb-4" />
         <p className="text-lg font-medium text-gray-300">Cargando...</p>
       </div>
     );
@@ -745,7 +745,7 @@ const PrimeVideo = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black p-4">
-        <FiAlertCircle className="text-5xl text-blue-500 mb-4" />
+        <FiAlertCircle className="text-5xl text-blue-400 mb-4" />
         <p className="text-xl font-semibold text-white mb-2">Error</p>
         <p className="text-gray-300 mb-6 text-center max-w-md">{error}</p>
         <button
@@ -771,7 +771,7 @@ const PrimeVideo = () => {
             </button>
             <Link to="/" className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-10 w-auto" />
-              <span className="text-xl font-semibold text-blue-500 hidden sm:block">
+              <span className="text-xl font-semibold text-blue-400 hidden sm:block">
                 BlackStreaming
               </span>
             </Link>
@@ -781,13 +781,13 @@ const PrimeVideo = () => {
             <input
               type="text"
               placeholder="Buscar en Prime Video..."
-              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-500"
+              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               onClick={handleSearch}
-              className="absolute right-3 text-gray-400 hover:text-blue-500 transition-all"
+              className="absolute right-3 text-gray-400 hover:text-blue-400 transition-all"
             >
               <FiSearch size={20} />
             </button>
@@ -797,7 +797,7 @@ const PrimeVideo = () => {
             {user ? (
               <div className="flex items-center space-x-2 md:space-x-4">
                 <span className="text-sm font-medium text-gray-300 hidden sm:flex items-center">
-                  <FiUser className="mr-2 text-blue-500" /> {user.name}
+                  <FiUser className="mr-2 text-blue-400" /> {user.name}
                 </span>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-200 bg-gray-800/50 px-3 py-1 rounded-full">
@@ -808,7 +808,7 @@ const PrimeVideo = () => {
                     className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 transition-all"
                     title="Dashboard"
                   >
-                    <FiUser className="text-blue-500" size={20} />
+                    <FiUser className="text-blue-400" size={20} />
                   </button>
                   <button
                     onClick={() => {
@@ -826,7 +826,7 @@ const PrimeVideo = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-4 py-2 text-sm text-gray-200 hover:text-blue-500 transition-all"
+                  className="px-4 py-2 text-sm text-gray-200 hover:text-blue-400 transition-all"
                 >
                   Ingresar
                 </button>
@@ -850,7 +850,7 @@ const PrimeVideo = () => {
         >
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center p-4 md:hidden">
-              <span className="text-xl font-semibold text-blue-500">
+              <span className="text-xl font-semibold text-blue-400">
                 BlackStreaming
               </span>
               <button
@@ -1235,7 +1235,7 @@ const PrimeVideo = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1616530940355-351fab26532b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-black/50"></div>
@@ -1256,7 +1256,7 @@ const PrimeVideo = () => {
               </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
-                className="text-sm sm:text-base text-blue-500 hover:text-blue-400 transition-all underline underline-offset-4"
+                className="text-sm sm:text-base text-blue-400 hover:text-blue-300 transition-all underline underline-offset-4"
               >
                 Términos Generales
               </button>
@@ -1289,34 +1289,34 @@ const PrimeVideo = () => {
                       </h3>
                       <div className="flex items-center mb-2">
                         {product.renewal ? (
-                          <p className="text-green-400 text-sm">
+                          <p className="text-blue-400 text-sm">
                             Renovación - S/ {formatPrice(product.renewalPrice)}
                           </p>
                         ) : (
-                          <p className="text-yellow-400 text-sm">Sin renovación</p>
+                          <p className="text-orange-400 text-sm">Sin renovación</p>
                         )}
                       </div>
                       <div className="text-sm text-gray-300 space-y-2 mb-3">
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiUserCheck className="text-blue-500" size={16} />
+                          <FiUserCheck className="text-blue-400" size={16} />
                           <span className="text-gray-400 truncate">
                             {product.provider}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiClock className="text-blue-500" size={16} />
+                          <FiClock className="text-blue-400" size={16} />
                           <span className="text-gray-400">
                             {parseDurationToDays(product.duration || "1 mes")}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiTag className="text-blue-500" size={16} />
+                          <FiTag className="text-blue-400" size={16} />
                           <span className="text-gray-400">
                             {product.accountType}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiActivity className="text-blue-500" size={16} />
+                          <FiActivity className="text-blue-400" size={16} />
                           <span className="text-gray-400">{product.status}</span>
                         </div>
                       </div>
@@ -1364,7 +1364,7 @@ const PrimeVideo = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiShoppingCart className="mr-2 text-blue-500" /> Confirmar Compra
+              <FiShoppingCart className="mr-2 text-blue-400" /> Confirmar Compra
             </h3>
             <p className="text-gray-300 mb-4">
               Estás a punto de comprar{" "}
@@ -1389,7 +1389,7 @@ const PrimeVideo = () => {
                       customerName: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
                   placeholder="Tu nombre"
                 />
               </div>
@@ -1406,7 +1406,7 @@ const PrimeVideo = () => {
                       phoneNumber: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
                   placeholder="9 dígitos (sin código de país)"
                 />
               </div>
@@ -1414,20 +1414,20 @@ const PrimeVideo = () => {
                 <input
                   type="checkbox"
                   id="termsCheck"
-                  className="h-4 w-4 text-blue-500 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  className="h-4 w-4 text-blue-400 bg-gray-700 border-gray-600 rounded focus:ring-blue-400"
                 />
                 <label htmlFor="termsCheck" className="ml-2 text-sm text-gray-300">
                   Acepto los{" "}
                   <button
                     onClick={() => showTerms(purchaseModal.product)}
-                    className="text-blue-500 hover:text-blue-400 underline underline-offset-2"
+                    className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
                   >
                     términos y condiciones
                   </button>
                 </label>
               </div>
               {error && (
-                <p className="text-blue-500 text-sm flex items-center">
+                <p className="text-blue-400 text-sm flex items-center">
                   <FiAlertCircle className="mr-2" /> {error}
                 </p>
               )}
@@ -1463,7 +1463,7 @@ const PrimeVideo = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiInfo className="mr-2 text-blue-500" /> Detalles del Producto
+              <FiInfo className="mr-2 text-blue-400" /> Detalles del Producto
             </h3>
             <div className="space-y-3 text-gray-300">
               <p>
@@ -1482,7 +1482,7 @@ const PrimeVideo = () => {
                 <span className="font-semibold text-white">Detalles:</span>{" "}
                 {detailModal.accountDetails}
               </p>
-              </div>
+            </div>
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setDetailModal(null)}
@@ -1499,7 +1499,7 @@ const PrimeVideo = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiFileText className="mr-2 text-blue-500" /> Términos y Condiciones
+              <FiFileText className="mr-2 text-blue-400" /> Términos y Condiciones
             </h3>
             <div className="space-y-3 text-gray-300">
               <p>
@@ -1542,7 +1542,7 @@ const PrimeVideo = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiFileText className="mr-2 text-blue-500" /> Términos Generales
+              <FiFileText className="mr-2 text-blue-400" /> Términos Generales
             </h3>
             <div className="text-gray-300 space-y-3">
               <p>
@@ -1588,7 +1588,7 @@ const PrimeVideo = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiInfo className="mr-2 text-blue-500" /> Notificación
+              <FiInfo className="mr-2 text-blue-400" /> Notificación
             </h3>
             <p className="text-gray-300 mb-6">{notificationModal.message}</p>
             <div className="flex justify-end">

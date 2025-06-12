@@ -312,86 +312,101 @@ const Disney = () => {
   };
 
   const finalizePurchase = async () => {
-    if (!document.getElementById("termsCheck").checked) {
-      setError("Debes aceptar los términos y condiciones");
-      return;
-    }
-    if (!/^\d{9}$/.test(purchaseModal.phoneNumber)) {
-      setError("El número de WhatsApp debe tener 9 dígitos");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const selectedProduct = purchaseModal.product;
-
-      if (!selectedProduct.providerId || selectedProduct.providerId === "") {
-        throw new Error("El producto no tiene un proveedor asociado");
+      if (!document.getElementById("termsCheck").checked) {
+        setError("Debes aceptar los términos y condiciones");
+        return;
       }
-
-      let accountData = null;
-      if (selectedProduct.status === "En stock") {
-        accountData = await runTransaction(db, async (transaction) => {
-          const productRef = doc(db, "products", selectedProduct.id);
-          const productDoc = await transaction.get(productRef);
-          if (!productDoc.exists()) {
-            throw new Error("Producto no encontrado");
-          }
-          const productData = productDoc.data();
-          if (productData.availableAccounts <= 0) {
-            throw new Error("No hay cuentas disponibles para este producto");
-          }
-
-          const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
-          const availableAccountsQuery = query(
-            accountsRef,
-            where("status", "==", "available"),
-            limit(1)
-          );
-          const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
-          if (availableAccountsSnapshot.empty) {
-            throw new Error("No hay cuentas disponibles en la subcolección");
-          }
-          const accountDoc = availableAccountsSnapshot.docs[0];
-          const accountRef = accountDoc.ref;
-          const accountData = accountDoc.data();
-
-          const userRef = doc(db, "users", user.id);
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists()) {
-            throw new Error("Usuario no encontrado");
-          }
-
-          const providerRef = doc(db, "users", selectedProduct.providerId);
-          const providerDoc = await transaction.get(providerRef);
-          if (!providerDoc.exists()) {
-            throw new Error("Proveedor no encontrado");
-          }
-
-          let providerPhone = selectedProduct.providerPhone || "";
-          if (!providerPhone) {
-            providerPhone = providerDoc.data().phoneNumber || "";
-          }
-
-          transaction.update(accountRef, {
-            status: "unavailable",
-            assignedTo: user.id,
-            assignedAt: new Date().toISOString(),
-          });
-
-          transaction.update(productRef, {
-            availableAccounts: increment(-1),
-            stock: increment(-1),
-          });
-
-          const userBalance = Number(userDoc.data().balance) || 0;
-          const newUserBalance = userBalance - selectedProduct.price;
-          if (newUserBalance < 0) {
-            throw new Error("Saldo insuficiente");
-          }
-          const userOrders = userDoc.data().orders || [];
-          const orderData = {
+      if (!/^\d{9}$/.test(purchaseModal.phoneNumber)) {
+        setError("El número de WhatsApp debe tener 9 dígitos");
+        return;
+      }
+  
+      try {
+        setLoading(true);
+  
+        const selectedProduct = purchaseModal.product;
+  
+        if (!selectedProduct.providerId || selectedProduct.providerId === "") {
+          throw new Error("El producto no tiene un proveedor asociado");
+        }
+  
+        let accountData = null;
+        if (selectedProduct.status === "En stock") {
+          accountData = await runTransaction(db, async (transaction) => {
+            const productRef = doc(db, "products", selectedProduct.id);
+            const productDoc = await transaction.get(productRef);
+            if (!productDoc.exists()) {
+              throw new Error("Producto no encontrado");
+            }
+            const productData = productDoc.data();
+            if (productData.availableAccounts <= 0) {
+              throw new Error("No hay cuentas disponibles para este producto");
+            }
+  
+            const accountsRef = collection(db, `products/${selectedProduct.id}/accounts`);
+            const availableAccountsQuery = query(
+              accountsRef,
+              where("status", "==", "available"),
+              limit(1)
+            );
+            const availableAccountsSnapshot = await getDocs(availableAccountsQuery);
+            if (availableAccountsSnapshot.empty) {
+              throw new Error("No hay cuentas disponibles en la subcolección");
+            }
+            const accountDoc = availableAccountsSnapshot.docs[0];
+            const accountRef = accountDoc.ref;
+            const accountData = accountDoc.data();
+  
+            const userRef = doc(db, "users", user.id);
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+              throw new Error("Usuario no encontrado");
+            }
+  
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            const providerDoc = await transaction.get(providerRef);
+            if (!providerDoc.exists()) {
+              throw new Error("Proveedor no encontrado");
+            }
+  
+            // Fetch or initialize provider balance in providerBalances
+            const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
+            const providerBalanceDoc = await transaction.get(providerBalanceRef);
+            let currentProviderBalance = 0;
+            if (providerBalanceDoc.exists()) {
+              currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
+            } else {
+              // Initialize provider balance if it doesn't exist
+              transaction.set(providerBalanceRef, {
+                balance: 0,
+                provider: selectedProduct.providerId,
+                updatedAt: serverTimestamp(),
+              });
+            }
+  
+            let providerPhone = selectedProduct.providerPhone || "";
+            if (!providerPhone) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+  
+            transaction.update(accountRef, {
+              status: "unavailable",
+              assignedTo: user.id,
+              assignedAt: new Date().toISOString(),
+            });
+  
+            transaction.update(productRef, {
+              availableAccounts: increment(-1),
+              stock: increment(-1),
+            });
+  
+            const userBalance = Number(userDoc.data().balance) || 0;
+            const newUserBalance = userBalance - selectedProduct.price;
+            if (newUserBalance < 0) {
+              throw new Error("Saldo insuficiente");
+            }
+            const userOrders = userDoc.data().orders || [];
+            const orderData = {
             productId: selectedProduct.id,
             productName: selectedProduct.name,
             price: selectedProduct.price,
@@ -400,10 +415,10 @@ const Disney = () => {
             providerId: selectedProduct.providerId,
             providerPhone: providerPhone,
             status: "active",
-            customerName: purchaseModal.customerName,
+            customerName: purchaseModal.customerName, // Datos del cliente final (modal)
             customerId: user.id,
-            phoneNumber: purchaseModal.phoneNumber,
-            buyerName: user.name,
+            phoneNumber: purchaseModal.phoneNumber,   // Teléfono del cliente final (modal)
+            buyerName: user.name,                     // Usuario logueado
             buyerId: user.id,
             buyerPhone: user.phone,
             createdAt: new Date().toISOString(),
@@ -415,15 +430,15 @@ const Disney = () => {
             terms: selectedProduct.terms,
             type: "disney",
           };
-          transaction.update(userRef, {
-            balance: newUserBalance,
-            orders: [...userOrders, orderData],
-          });
-
-          const providerBalanceUsers = Number(providerDoc.data().balance) || 0;
-          const newProviderBalanceUsers = providerBalanceUsers + selectedProduct.price;
-          const providerSales = providerDoc.data().sales || [];
-          const saleData = {
+            transaction.update(userRef, {
+              balance: newUserBalance,
+              orders: [...userOrders, orderData],
+            });
+  
+            const providerBalanceUsers = Number(providerDoc.data().balance) || 0;
+            const newProviderBalanceUsers = providerBalanceUsers + selectedProduct.price;
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
             saleId: doc(collection(db, "sales")).id,
             productId: selectedProduct.id,
             productName: selectedProduct.name,
@@ -447,76 +462,79 @@ const Disney = () => {
             status: "completed",
             terms: selectedProduct.terms,
           };
-          transaction.update(providerRef, {
-            balance: newProviderBalanceUsers,
-            sales: [...providerSales, saleData],
-          });
-
-          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
-          const providerBalanceDoc = await transaction.get(providerBalanceRef);
-          let currentProviderBalance = 0;
-          if (providerBalanceDoc.exists()) {
-            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
-          } else {
+            transaction.update(providerRef, {
+              balance: newProviderBalanceUsers,
+              sales: [...providerSales, saleData],
+            });
+  
+            // Update provider balance in providerBalances
+            const newProviderBalance = currentProviderBalance + selectedProduct.price;
             transaction.set(providerBalanceRef, {
-              balance: 0,
+              balance: newProviderBalance,
               provider: selectedProduct.providerId,
               updatedAt: serverTimestamp(),
+            }, { merge: true });
+  
+            const salesRef = doc(collection(db, "sales"));
+            transaction.set(salesRef, {
+              ...orderData,
+              provider: selectedProduct.provider,
+              providerId: selectedProduct.providerId,
+              providerPhone: providerPhone,
+              saleDate: new Date().toISOString(),
+              status: "completed",
+              accountDetails: {
+                email: accountData.email || "No proporcionado",
+                password: accountData.password || "No proporcionado",
+                profile: accountData.profile || "No proporcionado",
+              },
+              saleId: saleData.saleId,
+              terms: selectedProduct.terms,
             });
-          }
-
-          const newProviderBalance = currentProviderBalance + selectedProduct.price;
-          transaction.set(providerBalanceRef, {
-            balance: newProviderBalance,
-            provider: selectedProduct.providerId,
-            updatedAt: serverTimestamp(),
-          }, { merge: true });
-
-          const salesRef = doc(collection(db, "sales"));
-          transaction.set(salesRef, {
-            ...orderData,
-            provider: selectedProduct.provider,
-            providerId: selectedProduct.providerId,
-            providerPhone: providerPhone,
-            saleDate: new Date().toISOString(),
-            status: "completed",
-            accountDetails: {
-              email: accountData.email || "No proporcionado",
-              password: accountData.password || "No proporcionado",
-              profile: accountData.profile || "No proporcionado",
-            },
-            saleId: saleData.saleId,
-            terms: selectedProduct.terms,
+  
+            return accountData;
           });
-
-          return accountData;
-        });
-      } else {
-        await runTransaction(db, async (transaction) => {
-          const userRef = doc(db, "users", user.id);
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists()) {
-            throw new Error("Usuario no encontrado");
-          }
-
-          const providerRef = doc(db, "users", selectedProduct.providerId);
-          const providerDoc = await transaction.get(providerRef);
-          if (!providerDoc.exists()) {
-            throw new Error("Proveedor no encontrado");
-          }
-
-          let providerPhone = selectedProduct.providerPhone || "";
-          if (!providerPhone) {
-            providerPhone = providerDoc.data().phoneNumber || "";
-          }
-
-          const userBalance = Number(userDoc.data().balance) || 0;
-          const newUserBalance = userBalance - selectedProduct.price;
-          if (newUserBalance < 0) {
-            throw new Error("Saldo insuficiente");
-          }
-          const userOrders = userDoc.data().orders || [];
-          const orderData = {
+        } else {
+          await runTransaction(db, async (transaction) => {
+            const userRef = doc(db, "users", user.id);
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+              throw new Error("Usuario no encontrado");
+            }
+  
+            const providerRef = doc(db, "users", selectedProduct.providerId);
+            const providerDoc = await transaction.get(providerRef);
+            if (!providerDoc.exists()) {
+              throw new Error("Proveedor no encontrado");
+            }
+  
+            // Fetch or initialize provider balance in providerBalances
+            const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
+            const providerBalanceDoc = await transaction.get(providerBalanceRef);
+            let currentProviderBalance = 0;
+            if (providerBalanceDoc.exists()) {
+              currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
+            } else {
+              // Initialize provider balance if it doesn't exist
+              transaction.set(providerBalanceRef, {
+                balance: 0,
+                provider: selectedProduct.providerId,
+                updatedAt: serverTimestamp(),
+              });
+            }
+  
+            let providerPhone = selectedProduct.providerPhone || "";
+            if (!providerPhone) {
+              providerPhone = providerDoc.data().phoneNumber || "";
+            }
+  
+            const userBalance = Number(userDoc.data().balance) || 0;
+            const newUserBalance = userBalance - selectedProduct.price;
+            if (newUserBalance < 0) {
+              throw new Error("Saldo insuficiente");
+            }
+            const userOrders = userDoc.data().orders || [];
+            const orderData = {
             productId: selectedProduct.id,
             productName: selectedProduct.name,
             price: selectedProduct.price,
@@ -525,10 +543,10 @@ const Disney = () => {
             providerId: selectedProduct.providerId,
             providerPhone: providerPhone,
             status: "pending",
-            customerName: purchaseModal.customerName,
+            customerName: purchaseModal.customerName, // Datos del cliente final (modal)
             customerId: user.id,
-            phoneNumber: purchaseModal.phoneNumber,
-            buyerName: user.name,
+            phoneNumber: purchaseModal.phoneNumber,   // Teléfono del cliente final (modal)
+            buyerName: user.name,                     // Usuario logueado
             buyerId: user.id,
             buyerPhone: user.phone,
             createdAt: new Date().toISOString(),
@@ -536,15 +554,15 @@ const Disney = () => {
             terms: selectedProduct.terms,
             type: "disney",
           };
-          transaction.update(userRef, {
-            balance: newUserBalance,
-            orders: [...userOrders, orderData],
-          });
-
-          const providerBalanceUsers = Number(providerDoc.data().balance) || 0;
-          const newProviderBalanceUsers = providerBalanceUsers + selectedProduct.price;
-          const providerSales = providerDoc.data().sales || [];
-          const saleData = {
+            transaction.update(userRef, {
+              balance: newUserBalance,
+              orders: [...userOrders, orderData],
+            });
+  
+            const providerBalanceUsers = Number(providerDoc.data().balance) || 0;
+            const newProviderBalanceUsers = providerBalanceUsers + selectedProduct.price;
+            const providerSales = providerDoc.data().sales || [];
+            const saleData = {
             saleId: doc(collection(db, "sales")).id,
             productId: selectedProduct.id,
             productName: selectedProduct.name,
@@ -564,80 +582,68 @@ const Disney = () => {
             status: "pending",
             terms: selectedProduct.terms,
           };
-          transaction.update(providerRef, {
-            balance: newProviderBalanceUsers,
-            sales: [...providerSales, saleData],
-          });
-
-          const providerBalanceRef = doc(db, "providerBalances", selectedProduct.providerId);
-          const providerBalanceDoc = await transaction.get(providerBalanceRef);
-          let currentProviderBalance = 0;
-          if (providerBalanceDoc.exists()) {
-            currentProviderBalance = parseFloat(providerBalanceDoc.data().balance) || 0;
-          } else {
+            transaction.update(providerRef, {
+              balance: newProviderBalanceUsers,
+              sales: [...providerSales, saleData],
+            });
+  
+            // Update provider balance in providerBalances
+            const newProviderBalance = currentProviderBalance + selectedProduct.price;
             transaction.set(providerBalanceRef, {
-              balance: 0,
+              balance: newProviderBalance,
               provider: selectedProduct.providerId,
               updatedAt: serverTimestamp(),
+            }, { merge: true });
+  
+            const salesRef = doc(collection(db, "sales"));
+            transaction.set(salesRef, {
+              ...orderData,
+              provider: selectedProduct.provider,
+              providerId: selectedProduct.providerId,
+              providerPhone: providerPhone,
+              saleDate: new Date().toISOString(),
+              status: "pending",
+              saleId: saleData.saleId,
+              terms: selectedProduct.terms,
             });
-          }
-
-          const newProviderBalance = currentProviderBalance + selectedProduct.price;
-          transaction.set(providerBalanceRef, {
-            balance: newProviderBalance,
-            provider: selectedProduct.providerId,
-            updatedAt: serverTimestamp(),
-          }, { merge: true });
-
-          const salesRef = doc(collection(db, "sales"));
-          transaction.set(salesRef, {
-            ...orderData,
-            provider: selectedProduct.provider,
-            providerId: selectedProduct.providerId,
-            providerPhone: providerPhone,
-            saleDate: new Date().toISOString(),
-            status: "pending",
-            saleId: saleData.saleId,
-            terms: selectedProduct.terms,
           });
+        }
+  
+        setBalance((prev) => prev - selectedProduct.price);
+        setUser((prev) => ({
+          ...prev,
+          orders: [
+            ...prev.orders,
+            {
+              ...purchaseModal,
+              status: selectedProduct.status === "En stock" ? "active" : "pending",
+              createdAt: new Date().toISOString(),
+              accountDetails:
+                selectedProduct.status === "En stock"
+                  ? {
+                      email: accountData?.email || "No proporcionado",
+                      password: accountData?.password || "No proporcionado",
+                      profile: accountData?.profile || "No proporcionado",
+                    }
+                  : null,
+            },
+          ],
+        }));
+  
+        setPurchaseModal(null);
+        setNotificationModal({
+          message:
+            selectedProduct.status === "En stock"
+              ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
+              : "¡Pedido realizado con éxito! El proveedor se contactará contigo para coordinar los detalles.",
         });
+      } catch (err) {
+        setError(err.message || "Error al procesar la compra");
+        console.error("Error en la compra:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setBalance((prev) => prev - selectedProduct.price);
-      setUser((prev) => ({
-        ...prev,
-        orders: [
-          ...prev.orders,
-          {
-            ...purchaseModal,
-            status: selectedProduct.status === "En stock" ? "active" : "pending",
-            createdAt: new Date().toISOString(),
-            accountDetails:
-              selectedProduct.status === "En stock"
-                ? {
-                    email: accountData?.email || "No proporcionado",
-                    password: accountData?.password || "No proporcionado",
-                    profile: accountData?.profile || "No proporcionado",
-                  }
-                : null,
-          },
-        ],
-      }));
-
-      setPurchaseModal(null);
-      setNotificationModal({
-        message:
-          selectedProduct.status === "En stock"
-            ? "¡Compra realizada con éxito! El proveedor se contactará contigo con los detalles de acceso."
-            : "¡Pedido realizado con éxito! El proveedor se contactará contigo para coordinar los detalles.",
-      });
-    } catch (err) {
-      setError(err.message || "Error al procesar la compra");
-      console.error("Error en la compra:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const showDetails = (product) => {
     setDetailModal({

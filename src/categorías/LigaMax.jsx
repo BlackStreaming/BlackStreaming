@@ -234,7 +234,6 @@ const LigaMax = () => {
       "ChatGPT",
       "Redes Sociales",
       "Dgo",
-      "Liga Max",
       "Movistar Play",
       "Youtube",
       "Deezer",
@@ -562,7 +561,7 @@ const LigaMax = () => {
             productId: selectedProduct.id,
             productName: selectedProduct.name,
             price: selectedProduct.price,
-            renewalPrice: product.renewalPrice,
+            renewalPrice: selectedProduct.renewalPrice,
             provider: selectedProduct.provider,
             providerId: selectedProduct.providerId,
             providerPhone: providerPhone,
@@ -736,7 +735,7 @@ const LigaMax = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-200">
-        <FiLoader className="animate-spin text-5xl text-green-500 mb-4" />
+        <FiLoader className="animate-spin text-5xl text-red-400 mb-4" />
         <p className="text-lg font-medium text-gray-300">Cargando...</p>
       </div>
     );
@@ -745,12 +744,12 @@ const LigaMax = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-black p-4">
-        <FiAlertCircle className="text-5xl text-green-500 mb-4" />
+        <FiAlertCircle className="text-5xl text-red-400 mb-4" />
         <p className="text-xl font-semibold text-white mb-2">Error</p>
         <p className="text-gray-300 mb-6 text-center max-w-md">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-6 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all shadow-lg"
+          className="px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg"
         >
           Recargar
         </button>
@@ -771,7 +770,7 @@ const LigaMax = () => {
             </button>
             <Link to="/" className="flex items-center space-x-2">
               <img src={logo} alt="BlackStreaming" className="h-10 w-auto" />
-              <span className="text-xl font-semibold text-green-500 hidden sm:block">
+              <span className="text-xl font-semibold text-red-400 hidden sm:block">
                 BlackStreaming
               </span>
             </Link>
@@ -781,13 +780,13 @@ const LigaMax = () => {
             <input
               type="text"
               placeholder="Buscar en Liga Max..."
-              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all placeholder-gray-500"
+              className="w-full px-4 py-2 rounded-full bg-gray-800/50 text-gray-200 border border-gray-700 focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all placeholder-gray-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button
               onClick={handleSearch}
-              className="absolute right-3 text-gray-400 hover:text-green-400 transition-all"
+              className="absolute right-3 text-gray-400 hover:text-red-400 transition-all"
             >
               <FiSearch size={20} />
             </button>
@@ -797,7 +796,7 @@ const LigaMax = () => {
             {user ? (
               <div className="flex items-center space-x-2 md:space-x-4">
                 <span className="text-sm font-medium text-gray-300 hidden sm:flex items-center">
-                  <FiUser className="mr-2 text-green-500" /> {user.name}
+                  <FiUser className="mr-2 text-red-400" /> {user.name}
                 </span>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-200 bg-gray-800/50 px-3 py-1 rounded-full">
@@ -808,14 +807,14 @@ const LigaMax = () => {
                     className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 transition-all"
                     title="Dashboard"
                   >
-                    <FiUser className="text-green-500" size={20} />
+                    <FiUser className="text-red-400" size={20} />
                   </button>
                   <button
                     onClick={() => {
                       auth.signOut();
                       navigate("/");
                     }}
-                    className="flex items-center space-x-1 px-3 py-2 rounded-full bg-green-600/80 hover:bg-green-700 transition-all text-sm text-white"
+                    className="flex items-center space-x-1 px-3 py-2 rounded-full bg-red-600/80 hover:bg-red-700 transition-all text-sm text-white"
                   >
                     <FiLogOut size={18} />
                     <span className="hidden sm:inline">Salir</span>
@@ -826,13 +825,13 @@ const LigaMax = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-4 py-2 text-sm text-gray-200 hover:text-green-400 transition-all"
+                  className="px-4 py-2 text-sm text-gray-200 hover:text-red-400 transition-all"
                 >
                   Ingresar
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="px-4 py-2 rounded-full bg-green-500 text-white hover:bg-green-600 transition-all text-sm"
+                  className="px-4 py-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-all text-sm"
                 >
                   Registrarse
                 </button>
@@ -850,7 +849,7 @@ const LigaMax = () => {
         >
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center p-4 md:hidden">
-              <span className="text-xl font-semibold text-green-500">
+              <span className="text-xl font-semibold text-red-400">
                 BlackStreaming
               </span>
               <button
@@ -962,7 +961,7 @@ const LigaMax = () => {
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
-                  <FiMessageSquare className="text-teal-400" />
+                  <FiMessageSquare className="text-gray-400" />
                   <span>ChatGPT</span>
                 </div>
                 <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -986,7 +985,7 @@ const LigaMax = () => {
                 className="flex items-center justify-between px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800/50 transition-all"
               >
                 <div className="flex items-center space-x-2">
-                  <FiTv className="text-blue-500" />
+                  <FiTv className="text-blue-600" />
                   <span>Dgo</span>
                 </div>
                 <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -995,10 +994,10 @@ const LigaMax = () => {
               </Link>
               <Link
                 to="/ligamax"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-green-600/30 text-white border border-green-500/30"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-red-600/30 text-white border border-red-500/30"
               >
                 <div className="flex items-center space-x-2">
-                  <FiPlayCircle className="text-green-500" />
+                  <FiPlayCircle className="text-green-600" />
                   <span>Liga Max</span>
                 </div>
                 <span className="bg-gray-800/50 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -1213,7 +1212,7 @@ const LigaMax = () => {
             {user && (
               <div className="p-4 border-t border-gray-800/50">
                 <div className="flex items-center space-x-3 p-3 bg-gray-800/50 rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-green-500/30 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-12 h-12 rounded-full bg-red-500/30 flex items-center justify-center text-white font-bold text-lg">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -1235,7 +1234,7 @@ const LigaMax = () => {
             className="relative h-48 sm:h-56 md:h-64 bg-cover bg-center flex items-center justify-center overflow-hidden rounded-2xl shadow-lg mb-8"
             style={{
               backgroundImage:
-                "url('https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
+                "url('https://images.unsplash.com/photo-1518894781321-91d8e090916d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80')",
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 to-black/50"></div>
@@ -1244,7 +1243,7 @@ const LigaMax = () => {
                 Cuentas Premium de Liga Max
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md">
-                Vive la emoción del deporte con acceso premium a Liga Max
+                Disfruta de tus eventos deportivos favoritos con nuestras cuentas premium de Liga Max
               </p>
             </div>
           </section>
@@ -1256,7 +1255,7 @@ const LigaMax = () => {
               </h2>
               <button
                 onClick={() => setGeneralTermsModal(true)}
-                className="text-sm sm:text-base text-green-400 hover:text-green-300 transition-all underline underline-offset-4"
+                className="text-sm sm:text-base text-red-400 hover:text-red-300 transition-all underline underline-offset-4"
               >
                 Términos Generales
               </button>
@@ -1298,25 +1297,25 @@ const LigaMax = () => {
                       </div>
                       <div className="text-sm text-gray-300 space-y-2 mb-3">
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiUserCheck className="text-green-500" size={16} />
+                          <FiUserCheck className="text-red-400" size={16} />
                           <span className="text-gray-400 truncate">
                             {product.provider}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiClock className="text-green-500" size={16} />
+                          <FiClock className="text-red-400" size={16} />
                           <span className="text-gray-400">
                             {parseDurationToDays(product.duration || "1 mes")}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiTag className="text-green-500" size={16} />
+                          <FiTag className="text-red-400" size={16} />
                           <span className="text-gray-400">
                             {product.accountType}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 bg-gray-700/50 p-2 rounded-md">
-                          <FiActivity className="text-green-500" size={16} />
+                          <FiActivity className="text-red-400" size={16} />
                           <span className="text-gray-400">{product.status}</span>
                         </div>
                       </div>
@@ -1343,7 +1342,7 @@ const LigaMax = () => {
                         onClick={() => handlePurchase(product)}
                         className={`w-full py-3 px-4 rounded-md text-white font-semibold transition-all flex items-center justify-center gap-2 ${
                           product.stock > 0 || product.status === "A pedido"
-                            ? "bg-green-500 hover:bg-green-600"
+                            ? "bg-red-500 hover:bg-red-600"
                             : "bg-gray-600 cursor-not-allowed"
                         }`}
                         disabled={product.stock <= 0 && product.status !== "A pedido"}
@@ -1364,7 +1363,7 @@ const LigaMax = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiShoppingCart className="mr-2 text-green-500" /> Confirmar Compra
+              <FiShoppingCart className="mr-2 text-red-400" /> Confirmar Compra
             </h3>
             <p className="text-gray-300 mb-4">
               Estás a punto de comprar{" "}
@@ -1389,7 +1388,7 @@ const LigaMax = () => {
                       customerName: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
                   placeholder="Tu nombre"
                 />
               </div>
@@ -1406,7 +1405,7 @@ const LigaMax = () => {
                       phoneNumber: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-green-400 focus:border-green-400 transition-all"
+                  className="w-full px-4 py-2 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:ring-2 focus:ring-red-400 focus:border-red-400 transition-all"
                   placeholder="9 dígitos (sin código de país)"
                 />
               </div>
@@ -1414,20 +1413,20 @@ const LigaMax = () => {
                 <input
                   type="checkbox"
                   id="termsCheck"
-                  className="h-4 w-4 text-green-400 bg-gray-700 border-gray-600 rounded"
+                  className="h-4 w-4 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-400"
                 />
                 <label htmlFor="termsCheck" className="ml-2 text-sm text-gray-300">
                   Acepto los{" "}
                   <button
                     onClick={() => showTerms(purchaseModal.product)}
-                    className="text-green-400 hover:text-green-300 underline underline-offset-2"
+                    className="text-red-400 hover:text-red-300 underline underline-offset-2"
                   >
                     términos y condiciones
                   </button>
                 </label>
               </div>
               {error && (
-                <p className="text-green-400 text-sm flex items-center">
+                <p className="text-red-400 text-sm flex items-center">
                   <FiAlertCircle className="mr-2" /> {error}
                 </p>
               )}
@@ -1442,7 +1441,7 @@ const LigaMax = () => {
               <button
                 onClick={finalizePurchase}
                 disabled={loading}
-                className={`px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-all flex items-center ${
+                className={`px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all flex items-center ${
                   loading ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
@@ -1460,10 +1459,10 @@ const LigaMax = () => {
       )}
 
       {detailModal && !termsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiInfo className="mr-2 text-green-500" /> Detalles del Producto
+              <FiInfo className="mr-2 text-red-400" /> Detalles del Producto
             </h3>
             <div className="space-y-3 text-gray-300">
               <p>
@@ -1496,10 +1495,10 @@ const LigaMax = () => {
       )}
 
       {detailModal && termsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiFileText className="mr-2 text-green-500" /> Términos y Condiciones
+              <FiFileText className="mr-2 text-red-400" /> Términos y Condiciones
             </h3>
             <div className="space-y-3 text-gray-300">
               <p>
@@ -1528,7 +1527,7 @@ const LigaMax = () => {
               {purchaseModal && (
                 <button
                   onClick={() => setTermsModal(false)}
-                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-all"
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
                 >
                   Volver a Compra
                 </button>
@@ -1539,14 +1538,15 @@ const LigaMax = () => {
       )}
 
       {generalTermsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-pulse">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiFileText className="mr-2 text-green-500" /> Términos Generales
+              <FiFileText className="mr-2 text-red-400" /> Términos Generales
             </h3>
             <div className="text-gray-300 space-y-3">
               <p>
-                Al realizar una compra en BlackStreaming, aceptas las siguientes condiciones:
+                Al realizar una compra en BlackStreaming, aceptas los siguientes
+                términos generales:
               </p>
               <ul className="list-disc list-inside space-y-2">
                 <li>
@@ -1584,10 +1584,10 @@ const LigaMax = () => {
       )}
 
       {notificationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-pulse">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-gray-800/90 rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md border border-gray-700/50">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center">
-              <FiInfo className="mr-2 text-green-500" /> Notificación
+              <FiInfo className="mr-2 text-red-400" /> Notificación
             </h3>
             <p className="text-gray-300 mb-6">{notificationModal.message}</p>
             <div className="flex justify-end">
@@ -1598,7 +1598,7 @@ const LigaMax = () => {
                   }
                   setNotificationModal(null);
                 }}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-all"
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
               >
                 Aceptar
               </button>

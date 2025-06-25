@@ -412,7 +412,7 @@ const DashboardUser = () => {
             productName: data.productName || "Producto sin nombre",
             category: data.type || "netflix",
             price: parseFloat(data.price) || 0,
-            renewalPrice: parseFloat(data.renewalPrice) || parseFloat(data.price) || 0,
+            renewalPrice: parseFloat(data.renewalPrice) || 0,
             provider: data.provider || "No especificado",
             providerId: data.providerId || "",
             providerPhone: data.providerPhone || data.providerWhatsapp || "51999999999",
@@ -793,12 +793,12 @@ const DashboardUser = () => {
                 <p className="text-gray-300 mb-2">
                   Realiza tu pago mediante <span className="font-semibold text-white">Yape</span> al número:
                 </p>
-                <p className="text-xl font-bold text-white mb-2">📱 940505969</p>
+                <p className="text-xl font-bold text-white mb-2">📱 931757531</p>
                 <p className="text-gray-300 mb-3">
                   Una vez realizado el pago, por favor contáctanos vía WhatsApp al mismo número para confirmar tu recarga.
                 </p>
                 <a
-                  href={`https://wa.me/51940505969?text=${encodeURIComponent(
+                  href={`https://wa.me/51931757531?text=${encodeURIComponent(
                     "Hola 😊, he realizado una recarga a través de Yape. Por favor, confirma mi pago."
                   )}`}
                   target="_blank"
@@ -886,7 +886,7 @@ const DashboardUser = () => {
                 )
                 .map((order) => {
                   const price = parseFloat(order.price) || 0;
-                  const renewalPrice = parseFloat(order.renewalPrice) || parseFloat(order.price) || 0;
+                  const renewalPrice = parseFloat(order.renewalPrice) || 0;
                   const isActive = new Date(order.endDate) > new Date() && order.status === "completed";
                   const isOnDemand = order.status === "pending";
                   const daysRemaining = order.daysRemaining || 0;
@@ -912,7 +912,7 @@ const DashboardUser = () => {
                       `*N° Pedido:* ${order.orderId || "No especificado"}\n` +
                       `*Producto:* ${order.productName || "No especificado"}\n` +
                       `*Precio:* S/ ${price.toFixed(2)}\n` +
-                      `*Precio de Renovación:* S/ ${renewalPrice.toFixed(2)}\n` +
+                      (order.renewalPrice ? `*Precio de Renovación:* S/ ${renewalPrice.toFixed(2)}\n` : "") +
                       `*Estado:* ${isOnDemand ? "A pedido" : isActive ? "Activo" : "Expirado"}\n` +
                       `*Fecha de Inicio:* ${formatDate(order.startDate)}\n` +
                       `*Fecha de Vencimiento:* ${formatDate(order.endDate)}\n` +
@@ -967,9 +967,11 @@ const DashboardUser = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-white">S/ {price.toFixed(2)}</p>
-                          <p className="text-xs font-medium text-gray-400">
-                            Renovación: S/ {renewalPrice.toFixed(2)}
-                          </p>
+                          {order.renewalPrice && (
+                            <p className="text-xs font-medium text-gray-400">
+                              Renovación: S/ {renewalPrice.toFixed(2)}
+                            </p>
+                          )}
                           <p
                             className={`text-xs font-medium ${
                               isOnDemand ? "text-yellow-400" : countdownColor.replace("bg-", "text-")
@@ -1126,7 +1128,7 @@ const DashboardUser = () => {
                           >
                             <FiMessageCircle size={18} /> Contactar Proveedor
                           </a>
-                          {order.renewable && (
+                          {order.renewalPrice && order.renewable && (
                             <button
                               onClick={() => handleRenewal(order)}
                               disabled={actionLoading[`renew_${order.id}`]}

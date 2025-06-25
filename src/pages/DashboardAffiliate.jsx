@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   FiSettings,
@@ -952,12 +951,12 @@ const DashboardAffiliate = () => {
                   <p className="text-gray-300 mb-2">
                     Realiza tu pago mediante <span className="font-semibold text-white">Yape</span> al número:
                   </p>
-                  <p className="text-xl font-bold text-white mb-2">📱 940505969</p>
+                  <p className="text-xl font-bold text-white mb-2">📱 931757531</p>
                   <p className="text-gray-300 mb-3">
                     Una vez realizado el pago, por favor contáctanos vía WhatsApp al mismo número para confirmar tu recarga.
                   </p>
                   <a
-                    href={`https://wa.me/51940505969?text=${encodeURIComponent(
+                    href={`https://wa.me/51931757531?text=${encodeURIComponent(
                       "Hola 😊, he realizado una recarga a través de Yape. Por favor, confirma mi pago."
                     )}`}
                     target="_blank"

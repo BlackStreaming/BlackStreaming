@@ -12,9 +12,10 @@ import {
   FaBroadcastTower,
   FaBars,
   FaTimes,
+  FaPoll,
 } from "react-icons/fa";
 import { useNavigate, Link } from "react-router-dom";
-import { collection, query, where, getDocs, getDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, doc, addDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -131,7 +132,7 @@ const platforms = [
   { name: "Pornhub", logo: pornhubLogo, route: "/pornhub", color: "#FFA500" },
   { name: "Paramount", logo: paramountLogo, route: "/paramount", color: "#0064D2" },
   { name: "Licencias", logo: licenciasLogo, route: "/licencias", color: "#708090" },
-  { name: "Capcut", logo: capcutLogo, route: "/capcut", color: "#00CED1" },
+  { name: "Cap figured", logo: capcutLogo, route: "/capcut", color: "#00CED1" },
   { name: "Duolingo", logo: duolingoLogo, route: "/duolingo", color: "#58CC02" },
   { name: "Busca Personas", logo: buscaPersonasLogo, route: "/buscapersonas", color: "#6A5ACD" },
 ];
@@ -143,7 +144,7 @@ const NotificationModal = ({ isOpen, onClose, message }) => (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        exit={{ opacity:  0 }}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
       >
         <motion.div
@@ -169,6 +170,180 @@ const NotificationModal = ({ isOpen, onClose, message }) => (
   </AnimatePresence>
 );
 
+// Survey Modal Component
+const SurveyModal = ({ isOpen, onClose, onSubmit, user }) => {
+  const [websiteSatisfaction, setWebsiteSatisfaction] = useState(0);
+  const [providerSatisfaction, setProviderSatisfaction] = useState(0);
+  const [recommendedProvider, setRecommendedProvider] = useState("");
+  const [notRecommendedProvider, setNotRecommendedProvider] = useState("");
+  const [improvementSuggestions, setImprovementSuggestions] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      onClose();
+      return;
+    }
+    try {
+      // Check if user has already submitted a survey
+      const surveysRef = collection(db, "surveys");
+      const q = query(surveysRef, where("userEmail", "==", user.email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        onClose();
+        return;
+      }
+
+      await onSubmit({
+        websiteSatisfaction,
+        providerSatisfaction,
+        recommendedProvider,
+        notRecommendedProvider,
+        improvementSuggestions,
+        timestamp: new Date(),
+        userEmail: user.email,
+        username: user.name,
+      });
+      setWebsiteSatisfaction(0);
+      setProviderSatisfaction(0);
+      setRecommendedProvider("");
+      setNotRecommendedProvider("");
+      setImprovementSuggestions("");
+      onClose();
+    } catch (error) {
+      console.error("Error submitting survey:", error);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+        >
+          <motion.div
+            initial={{ scale: 0.8, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.8, y: 50 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border dark:border-gray-700"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <FaPoll className="text-blue-500 dark:text-cyan-400 text-2xl" />
+              <h3 className="text-xl font-bold dark:text-white text-gray-900">Encuesta de Satisfacción</h3>
+            </div>
+            {!user ? (
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Por favor, inicia sesión para completar la encuesta.
+              </p>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    ¿Estás satisfecho con la página? (1-5)
+                  </label>
+                  <div className="flex space-x-2">
+                    {[1, 2, 3, 4, 5].map((score) => (
+                      <button
+                        key={score}
+                        type="button"
+                        onClick={() => setWebsiteSatisfaction(score)}
+                        className={`w-10 h-10 rounded-full border-2 ${
+                          websiteSatisfaction === score
+                            ? "bg-blue-600 dark:bg-cyan-600 text-white"
+                            : "bg-gray-100 dark:bg-gray-800 dark:border-gray-700 border-gray-200"
+                        } flex items-center justify-center`}
+                      >
+                        {score}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    ¿Estás satisfecho con los proveedores? (1-5)
+                  </label>
+                  <div className="flex space-x-2">
+                    {[1, 2, 3, 4, 5].map((score) => (
+                      <button
+                        key={score}
+                        type="button"
+                        onClick={() => setProviderSatisfaction(score)}
+                        className={`w-10 h-10 rounded-full border-2 ${
+                          providerSatisfaction === score
+                            ? "bg-blue-600 dark:bg-cyan-600 text-white"
+                            : "bg-gray-100 dark:bg-gray-800 dark:border-gray-700 border-gray-200"
+                        } flex items-center justify-center`}
+                      >
+                        {score}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    ¿Qué proveedor recomiendas?
+                  </label>
+                  <input
+                    type="text"
+                    value={recommendedProvider}
+                    onChange={(e) => setRecommendedProvider(e.target.value)}
+                    className="w-full py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-gray-100 text-gray-900 focus:ring-2 focus:ring-blue-500 dark:focus:ring-cyan-500 focus:outline-none"
+                    placeholder="Escribe el nombre del proveedor"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    ¿Qué proveedor no recomiendas?
+                  </label>
+                  <input
+                    type="text"
+                    value={notRecommendedProvider}
+                    onChange={(e) => setNotRecommendedProvider(e.target.value)}
+                    className="w-full py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-gray-100 text-gray-900 focus:ring-2 focus:ring-blue-500 dark:focus:ring-cyan-500 focus:outline-none"
+                    placeholder="Escribe el nombre del proveedor"
+                  />
+                </div>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    ¿Qué mejorarías de la página?
+                  </label>
+                  <textarea
+                    value={improvementSuggestions}
+                    onChange={(e) => setImprovementSuggestions(e.target.value)}
+                    className="w-full py-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-800 dark:text-gray-100 text-gray-900 focus:ring-2 focus:ring-blue-500 dark:focus:ring-cyan-500 focus:outline-none"
+                    placeholder="Escribe tus sugerencias"
+                    rows="4"
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-2 rounded-lg bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-full py-2 rounded-lg bg-blue-600 dark:bg-cyan-600 text-white hover:bg-blue-700 dark:hover:bg-cyan-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    disabled={websiteSatisfaction === 0 || providerSatisfaction === 0}
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const Home = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [user, setUser] = useState(null);
@@ -177,6 +352,7 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [notification, setNotification] = useState({ isOpen: false, message: "" });
+  const [surveyOpen, setSurveyOpen] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -263,6 +439,23 @@ const Home = () => {
     }
   };
 
+  // Function to handle survey submission
+  const handleSurveySubmit = async (surveyData) => {
+    try {
+      await addDoc(collection(db, "surveys"), surveyData);
+      setNotification({
+        isOpen: true,
+        message: "¡Gracias por tu opinión! La encuesta se ha enviado correctamente.",
+      });
+    } catch (error) {
+      console.error("Error al enviar la encuesta:", error);
+      setNotification({
+        isOpen: true,
+        message: "Error al enviar la encuesta. Por favor, intenta de nuevo.",
+      });
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await auth.signOut();
@@ -332,6 +525,14 @@ const Home = () => {
         isOpen={notification.isOpen}
         onClose={() => setNotification({ ...notification, isOpen: false })}
         message={notification.message}
+      />
+
+      {/* Survey Modal */}
+      <SurveyModal
+        isOpen={surveyOpen}
+        onClose={() => setSurveyOpen(false)}
+        onSubmit={handleSurveySubmit}
+        user={user}
       />
 
       {/* Navigation Bar */}
@@ -418,6 +619,15 @@ const Home = () => {
                   aria-label="Ver notificaciones"
                 >
                   <FaBell className="dark:text-cyan-400 text-blue-600" size={22} />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSurveyOpen(true)}
+                  className="p-2 rounded-full dark:bg-gray-800 bg-gray-100 dark:hover:bg-gray-700 hover:bg-gray-200"
+                  aria-label="Abrir encuesta"
+                >
+                  <FaPoll className="dark:text-cyan-400 text-blue-600" size={22} />
                 </motion.button>
                 <motion.span
                   className="text-base font-medium dark:text-cyan-300 text-blue-700"
@@ -561,6 +771,18 @@ const Home = () => {
                       >
                         <FaBell size={18} />
                         <span>Notificaciones</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSurveyOpen(true);
+                          toggleMenu();
+                        }}
+                        className="flex items-center space-x-2 text-base text-left dark:text-gray-200 text-gray-700 hover:dark:text-cyan-300 hover:text-blue-600"
+                      >
+                        <FaPoll size={18} />
+                        <span>Encuesta</span>
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.05 }}

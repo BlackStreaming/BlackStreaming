@@ -2,14 +2,14 @@ import React, { useState, useEffect } from "react";
 import {
   FiHome, FiBox, FiUpload, FiDollarSign, FiSettings,
   FiLogOut, FiMenu, FiEdit2, FiTrash2, FiPlus,
-  FiCheck, FiX, FiBell, FiUser, FiCreditCard, FiShoppingCart,
+  FiCheck, FiX, FiBell, FiUser, FiShoppingCart,
   FiClock, FiAlertCircle, FiCheckCircle, FiSearch, FiMessageCircle,
   FiDatabase
 } from "react-icons/fi";
 import {
   collection, addDoc, query, where, onSnapshot,
   doc, deleteDoc, setDoc, getDoc, serverTimestamp,
-  updateDoc, orderBy, Timestamp,
+  updateDoc, orderBy, Timestamp, getDocs
 } from "firebase/firestore";
 import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -82,12 +82,7 @@ const DashboardProvider = () => {
     password: "",
     preferences: "",
   });
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawMethod, setWithdrawMethod] = useState("Yape");
-  const [withdrawAccount, setWithdrawAccount] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [providerBalance, setProviderBalance] = useState(0);
   const [editOrderModalOpen, setEditOrderModalOpen] = useState(false);
@@ -224,7 +219,7 @@ const DashboardProvider = () => {
     if (!uid) return;
 
     const q = query(collection(db, "sales"), where("providerId", "==", uid));
-        const unsubscribe = onSnapshot(
+    const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         if (snapshot.empty) {
@@ -252,7 +247,6 @@ const DashboardProvider = () => {
             shouldUpdateFirestore = true;
           }
 
-          // Actualizar Firestore solo si es necesario
           if (shouldUpdateFirestore) {
             updateDoc(doc(db, "sales", docSnap.id), {
               startDate: startDateRaw || Timestamp.fromDate(saleDate),
@@ -295,7 +289,6 @@ const DashboardProvider = () => {
         });
 
         setOrders(formattedOrders);
-        // Update sold accounts
         const accounts = formattedOrders
           .filter(order => order.status === "completed" && order.accountDetails)
           .map(order => ({
@@ -337,57 +330,6 @@ const DashboardProvider = () => {
       clearInterval(interval);
     };
   }, [uid]);
-
-  useEffect(() => {
-    if (!username) return;
-    const q = query(
-      collection(db, "withdrawals"),
-      where("provider", "==", username),
-      orderBy("createdAt", "desc")
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedWithdrawals = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          amount: parseFloat(data.amount) || 0,
-          createdAt: data.createdAt || new Date(),
-          processedAt: data.processedAt || null,
-        };
-      });
-      setWithdrawals(fetchedWithdrawals);
-      setBalanceLoading(false);
-    }, (err) => {
-      console.error("Error fetching withdrawals:", err);
-    });
-    return () => unsubscribe();
-  }, [username]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    const q = query(
-      collection(db, "withdrawals"),
-      where("status", "==", "pending"),
-      orderBy("createdAt", "desc")
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedWithdrawals = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          amount: parseFloat(data.amount) || 0,
-          createdAt: data.createdAt || new Date(),
-        };
-      });
-      setPendingWithdrawals(fetchedWithdrawals);
-    }, (err) => {
-      console.error("Error fetching pending withdrawals:", err);
-      setError("Error al cargar solicitudes de retiro pendientes");
-    });
-    return () => unsubscribe();
-  }, [isAdmin]);
 
   useEffect(() => {
     if (!username) return;
@@ -579,45 +521,57 @@ const DashboardProvider = () => {
   const handleEdit = async (product) => {
     setEditError("");
     
-    // Fetch sold accounts for this product
-    const salesQuery = query(
-      collection(db, "sales"),
-      where("providerId", "==", uid),
-      where("productName", "==", product.name)
-    );
-    const salesSnapshot = await getDocs(salesQuery);
-    const soldAccountEmails = salesSnapshot.docs
-      .filter(doc => doc.data().status === "completed" && doc.data().accountDetails?.email)
-      .map(doc => doc.data().accountDetails.email);
+    try {
+      // Fetch sold accounts for this product
+      const salesQuery = query(
+        collection(db, "sales"),
+        where("providerId", "==", uid),
+        where("productName", "==", product.name)
+      );
+      const salesSnapshot = await getDocs(salesQuery);
+      const soldAccountEmails = salesSnapshot.docs
+        .filter(doc => doc.data().status === "completed" && doc.data().accountDetails?.email)
+        .map(doc => doc.data().accountDetails.email);
 
-    // Filter out sold accounts
-    const availableAccounts = (product.accounts || []).filter(
-      account => !soldAccountEmails.includes(account.email)
-    );
+      // Fetch available accounts from subcollection
+      const accountsCollection = collection(db, `products/${product.id}/accounts`);
+      const accountsSnapshot = await getDocs(accountsCollection);
+      const availableAccounts = accountsSnapshot.docs
+        .filter(doc => doc.data().status === "available")
+        .map(doc => ({
+          email: doc.data().email || "",
+          password: doc.data().password || "",
+          profile: doc.data().profile || "",
+          pin: doc.data().pin || ""
+        }));
 
-    setSelectedProduct({
-      id: product.id,
-      name: product.name || "",
-      image: product.image || "",
-      category: product.category || "Netflix",
-      accountType: product.accountType || "Premium",
-      status: product.status || "En stock",
-      stock: availableAccounts.length || 1,
-      price: product.price || "",
-      renewal: product.renewal || false,
-      renewalPrice: product.renewalPrice || "",
-      duration: product.duration || "",
-      providerPhone: product.providerPhone || "",
-      details: product.details || "",
-      terms: product.terms || "",
-      providerId: product.providerId || uid,
-      accounts: product.status === "En stock" 
-        ? (availableAccounts.length > 0 
-           ? availableAccounts 
-           : Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "", pin: "" }))
-        : [],
-    });
-    setEditModalOpen(true);
+      setSelectedProduct({
+        id: product.id,
+        name: product.name || "",
+        image: product.image || "",
+        category: product.category || "Netflix",
+        accountType: product.accountType || "Premium",
+        status: product.status || "En stock",
+        stock: availableAccounts.length || product.stock || 1,
+        price: product.price || "",
+        renewal: product.renewal || false,
+        renewalPrice: product.renewalPrice || "",
+        duration: product.duration || "",
+        providerPhone: product.providerPhone || "",
+        details: product.details || "",
+        terms: product.terms || "",
+        providerId: product.providerId || uid,
+        accounts: product.status === "En stock" 
+          ? (availableAccounts.length > 0 
+             ? availableAccounts 
+             : Array(Math.max(product.stock || 1, 1)).fill({ email: "", password: "", profile: "", pin: "" }))
+          : [],
+      });
+      setEditModalOpen(true);
+    } catch (error) {
+      console.error("Error al preparar edición del producto:", error);
+      setEditError("Error al preparar edición del producto");
+    }
   };
 
   const handleUpdateProduct = async () => {
@@ -633,7 +587,7 @@ const DashboardProvider = () => {
     if (selectedProduct.status === "En stock") {
       const hasEmptyAccounts = selectedProduct.accounts.some((acc) => !acc.email || !acc.password);
       if (hasEmptyAccounts) {
-        setEditError("Por favor complete todos los campos de las.accounts");
+        setEditError("Por favor complete todos los campos de las cuentas");
         return;
       }
     }
@@ -646,15 +600,12 @@ const DashboardProvider = () => {
         availableAccounts: selectedProduct.status === "En stock" ? (selectedProduct.accounts?.length || 0) : 0,
       }, { merge: true });
       
-      // Update accounts subcollection
       if (selectedProduct.status === "En stock") {
         const accountsCollection = collection(db, `products/${selectedProduct.id}/accounts`);
-        // Clear existing accounts
         const existingAccounts = await getDocs(accountsCollection);
         for (const doc of existingAccounts.docs) {
           await deleteDoc(doc.ref);
         }
-        // Add new accounts
         for (const account of selectedProduct.accounts) {
           await addDoc(accountsCollection, {
             email: account.email,
@@ -715,80 +666,6 @@ const DashboardProvider = () => {
     }
   };
 
-  const handleWithdrawRequest = async () => {
-    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
-      showModal("Error", "Ingrese un monto válido");
-      return;
-    }
-    if (parseFloat(withdrawAmount) > providerBalance) {
-      showModal("Error", "No tienes suficientes fondos disponibles");
-      return;
-    }
-    if (!withdrawAccount) {
-      showModal("Error", "Ingrese los datos de su cuenta");
-      return;
-    }
-    try {
-      await addDoc(collection(db, "withdrawals"), {
-        provider: username,
-        providerEmail: email,
-        amount: parseFloat(withdrawAmount),
-        method: withdrawMethod,
-        account: withdrawAccount,
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-      setWithdrawAmount("");
-      setWithdrawAccount("");
-      showModal("Éxito", "Solicitud de retiro enviada correctamente");
-    } catch (error) {
-      console.error("Error al solicitar retiro:", error);
-      showModal("Error", "Error al solicitar retiro");
-    }
-  };
-
-  const handleWithdrawAction = async (withdrawalId, action) => {
-    try {
-      const withdrawalRef = doc(db, "withdrawals", withdrawalId);
-      const withdrawalDoc = await getDoc(withdrawalRef);
-      if (!withdrawalDoc.exists()) {
-        throw new Error("Solicitud de retiro no encontrada");
-      }
-      const withdrawalData = withdrawalDoc.data();
-      const provider = withdrawalData.provider;
-      const amount = parseFloat(withdrawalData.amount);
-
-      if (action === "approved") {
-        const balanceDocRef = doc(db, "providerBalances", provider);
-        const balanceDoc = await getDoc(balanceDocRef);
-        let currentBalance = 0;
-        if (balanceDoc.exists()) {
-          currentBalance = balanceDoc.data().balance || 0;
-        }
-        if (amount > currentBalance) {
-          showModal("Error", "El proveedor no tiene suficientes fondos para aprobar este retiro");
-          return;
-        }
-        await setDoc(balanceDocRef, {
-          balance: currentBalance - amount,
-          provider,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-      }
-
-      await updateDoc(withdrawalRef, {
-        status: action,
-        processedAt: serverTimestamp(),
-        processedBy: email,
-      });
-
-      showModal("Éxito", action === "approved" ? "Retiro aprobado y saldo actualizado correctamente" : "Retiro rechazado");
-    } catch (error) {
-      console.error("Error al procesar retiro:", error);
-      showModal("Error", "Error al procesar retiro: " + error.message);
-    }
-  };
-
   const handleEditOrder = (order) => {
     setEditOrderError("");
     setSelectedOrder({
@@ -839,9 +716,6 @@ const DashboardProvider = () => {
   };
 
   const totalEarnings = balanceLoading ? 0 : orders.reduce((total, order) => total + (order.amount || 0), 0);
-  const totalWithdrawn = balanceLoading ? 0 : withdrawals.reduce((total, withdrawal) => total + (withdrawal.status === "approved" ? withdrawal.amount : 0), 0);
-  const calculateAvailableBalance = () => balanceLoading ? 0 : providerBalance;
-  const availableBalance = calculateAvailableBalance();
   const totalStock = products.reduce((total, product) => total + (parseInt(product.stock) || 0), 0);
 
   const renderContent = () => {
@@ -901,13 +775,7 @@ const DashboardProvider = () => {
                   <>
                     <p className="text-3xl font-bold text-white">S/ {totalEarnings.toFixed(2)}</p>
                     <p className="text-gray-400">{orders.length} ventas realizadas</p>
-                    <p className="text-gray-400">Disponible: S/ {availableBalance.toFixed(2)}</p>
-                    <button
-                      onClick={() => setActiveSection("retiros")}
-                      className="text-cyan-400 hover:underline text-sm mt-2"
-                    >
-                      Retirar fondos
-                    </button>
+                    <p className="text-gray-400">Disponible: S/ {providerBalance.toFixed(2)}</p>
                   </>
                 )}
               </div>
@@ -1422,7 +1290,6 @@ const DashboardProvider = () => {
                 <div>
                   <h4 className="text-lg font-medium text-white mb-1">Ganancias totales</h4>
                   <p className="text-sm text-gray-400">{orders.length} ventas realizadas</p>
-                  <p className="text-sm text-gray-400">Retirado: S/ {totalWithdrawn.toFixed(2)}</p>
                   {balanceLoading ? (
                     <p className="text-sm text-gray-400">Disponible: Cargando...</p>
                   ) : (
@@ -1614,7 +1481,7 @@ const DashboardProvider = () => {
                             >
                               <FiEdit2 size={18} /> Editar Cuenta
                             </button>
-                            {order.status ===                             "pending" && (
+                            {order.status === "pending" && (
                               <button
                                 onClick={() => handleActivateOrder(order.id)}
                                 className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center gap-2 transition-all duration-300"
@@ -1667,161 +1534,6 @@ const DashboardProvider = () => {
                 <p className="text-gray-400">Tus pedidos aparecerán aquí</p>
               </div>
             )}
-          </div>
-        );
-
-      case "retiros":
-        return (
-          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-600/50">
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
-              <FiCreditCard className="mr-2" /> Retiros
-            </h3>
-            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-gray-600/50 shadow-lg">
-              <h4 className="text-lg font-medium text-white mb-4">Solicitar Retiro</h4>
-              {balanceLoading ? (
-                <p className="text-gray-400">Cargando saldo...</p>
-              ) : (
-                <p className="text-gray-300 mb-4">Saldo disponible: S/ {availableBalance.toFixed(2)}</p>
-              )}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-300 mb-2">Monto a retirar (S/)*</label>
-                  <input
-                    type="number"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                    placeholder="Ej: 50.00"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-300 mb-2">Método de pago*</label>
-                  <select
-                    value={withdrawMethod}
-                    onChange={(e) => setWithdrawMethod(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
-                  >
-                    <option value="Yape">Yape</option>
-                    <option value="BCP">BCP</option>
-                    <option value="Interbank">Interbank</option>
-                    <option value="BBVA">BBVA</option>
-                    <option value="Paypal">Paypal</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-300 mb-2">Cuenta o número*</label>
-                  <input
-                    type="text"
-                    value={withdrawAccount}
-                    onChange={(e) => setWithdrawAccount(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
-                    placeholder="Ej: Número de cuenta o teléfono"
-                    required
-                  />
-                </div>
-                <button
-                  onClick={handleWithdrawRequest}
-                  className="w-full px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
-                >
-                  Solicitar Retiro
-                </button>
-              </div>
-            </div>
-            {isAdmin && (
-              <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 mb-6 border border-gray-600/50 shadow-lg">
-                <h4 className="text-lg font-medium text-white mb-4">Solicitudes Pendientes</h4>
-                {pendingWithdrawals.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-600/50">
-                      <thead className="bg-gray-700/50 backdrop-blur-sm">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Proveedor</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Método</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cuenta</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
-                        {pendingWithdrawals.map((withdrawal) => (
-                          <tr key={withdrawal.id} className="hover:bg-gray-700/50 transition-all duration-300">
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white">{withdrawal.provider}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white">S/ {withdrawal.amount.toFixed(2)}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{withdrawal.method}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{withdrawal.account}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{formatDate(withdrawal.createdAt)}</td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() => handleWithdrawAction(withdrawal.id, "approved")}
-                                className="text-green-400 hover:text-green-500 mr-3"
-                                title="Aprobar"
-                              >
-                                <FiCheck />
-                              </button>
-                              <button
-                                onClick={() => handleWithdrawAction(withdrawal.id, "rejected")}
-                                className="text-red-400 hover:text-red-500"
-                                title="Rechazar"
-                              >
-                                <FiX />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-gray-400">No hay solicitudes de retiro pendientes.</p>
-                )}
-              </div>
-            )}
-            <div className="bg-gray-700/50 backdrop-blur-sm rounded-2xl p-4 border border-gray-600/50 shadow-lg">
-              <h4 className="text-lg font-medium text-white mb-4">Historial de Retiros</h4>
-              {withdrawals.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-600/50">
-                    <thead className="bg-gray-700/50 backdrop-blur-sm">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Monto</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Método</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cuenta</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-gray-800/50 divide-y divide-gray-600/50">
-                      {withdrawals.map((withdrawal) => (
-                        <tr key={withdrawal.id} className="hover:bg-gray-700/50 transition-all duration-300">
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-white">S/ {withdrawal.amount.toFixed(2)}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{withdrawal.method}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{withdrawal.account}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{formatDate(withdrawal.createdAt)}</td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span
-                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                withdrawal.status === "approved" ? "bg-green-900/80 text-green-400" :
-                                withdrawal.status === "rejected" ? "bg-red-900/80 text-red-400" :
-                                "bg-yellow-900/80 text-yellow-400"
-                              }`}
-                            >
-                              {withdrawal.status === "approved" ? "Aprobado" :
-                               withdrawal.status === "rejected" ? "Rechazado" : "Pendiente"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-gray-400">No hay historial de retiros.</p>
-              )}
-            </div>
           </div>
         );
 
@@ -1881,138 +1593,147 @@ const DashboardProvider = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex">
-        {/* Sidebar */}
-        <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800/80 backdrop-blur-sm transform ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0 transition-transform duration-300 ease-in-out border-r border-gray-700/50 md:border-none`}
-        >
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-cyan-400">BlackStreaming</h2>
-            <p className="text-gray-400 text-sm mt-1">{username}</p>
-          </div>
-          <nav className="mt-4">
-            <button
-              onClick={() => {
-                setActiveSection("inicio");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "inicio" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiHome className="mr-3" /> Inicio
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("inventario");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "inventario" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiBox className="mr-3" /> Inventario
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("cuentas");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "cuentas" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiDatabase className="mr-3" /> Cuentas Vendidas
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("subirProducto");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "subirProducto" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiUpload className="mr-3" /> Subir Producto
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("ganancias");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "ganancias" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiDollarSign className="mr-3" /> Ganancias
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("pedidos");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "pedidos" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiShoppingCart className="mr-3" /> Pedidos
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("retiros");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "retiros" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiCreditCard className="mr-3" /> Retiros
-            </button>
-            <button
-              onClick={() => {
-                setActiveSection("configuracion");
-                setMenuOpen(false);
-              }}
-              className={`w-full flex items-center px-6 py-3 text-left ${
-                activeSection === "configuracion" ? "bg-gray-700/50 text-cyan-400" : "text-gray-300 hover:bg-gray-700/50"
-              } transition-all duration-300`}
-            >
-              <FiSettings className="mr-3" /> Configuración
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-6 py-3 text-left text-gray-300 hover:bg-gray-700/50 transition-all duration-300"
-            >
-              <FiLogOut className="mr-3" /> Cerrar Sesión
-            </button>
-          </nav>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white flex">
+      {/* Sidebar */}
+      <div
+        className={`${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        } fixed md:static md:translate-x-0 inset-y-0 left-0 w-64 bg-gray-900/90 backdrop-blur-md z-40 transition-transform duration-300 md:w-64 border-r border-gray-700/50`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+          <h2 className="text-xl font-bold text-cyan-400">BlackStreaming</h2>
+          <button
+            className="md:hidden text-gray-400 hover:text-white"
+            onClick={() => setMenuOpen(false)}
+          >
+            <FiX size={24} />
+          </button>
         </div>
+        <nav className="p-4 space-y-2">
+          <button
+            onClick={() => {
+              setActiveSection("inicio");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "inicio"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiHome className="mr-3" /> Inicio
+          </button>
+          <button
+            onClick={() => {
+              setActiveSection("inventario");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "inventario"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiBox className="mr-3" /> Inventario
+          </button>
+          <button
+            onClick={() => {
+              setActiveSection("cuentas");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "cuentas"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiDatabase className="mr-3" /> Cuentas Vendidas
+          </button>
+          <button
+            onClick={() => {
+              setActiveSection("pedidos");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "pedidos"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiShoppingCart className="mr-3" /> Pedidos
+          </button>
+          <button
+            onClick={() => {
+              setActiveSection("ganancias");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "ganancias"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiDollarSign className="mr-3" /> Ganancias
+          </button>
+          <button
+            onClick={() => {
+              setActiveSection("configuracion");
+              setMenuOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-2 rounded-xl transition-all duration-300 ${
+              activeSection === "configuracion"
+                ? "bg-cyan-500 text-white"
+                : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            }`}
+          >
+            <FiSettings className="mr-3" /> Configuración
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-4 py-2 rounded-xl text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-300"
+          >
+            <FiLogOut className="mr-3" /> Cerrar Sesión
+          </button>
+        </nav>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-4 md:p-8 md:ml-64">
-          <div className="flex justify-between items-center mb-6 md:hidden">
-            <h1 className="text-2xl font-bold text-cyan-400">BlackStreaming</h1>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="text-gray-300 hover:text-cyan-400 focus:outline-none"
-            >
-              <FiMenu size={24} />
-            </button>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-gray-900/90 backdrop-blur-md p-4 flex justify-between items-center border-b border-gray-700/50">
+          <button
+            className="md:hidden text-gray-400 hover:text-white"
+            onClick={() => setMenuOpen(true)}
+          >
+            <FiMenu size={24} />
+          </button>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-lg font-semibold text-white">Panel de Proveedor</h1>
+            {isAdmin && (
+              <span className="text-xs bg-cyan-900 text-cyan-400 py-1 px-2 rounded-full">Admin</span>
+            )}
           </div>
+          <div className="flex items-center space-x-4">
+            <p className="text-sm text-gray-400 hidden sm:block">{username}</p>
+            <div className="h-8 w-8 rounded-full bg-cyan-500 flex items-center justify-center">
+              <FiUser className="text-white" />
+            </div>
+          </div>
+        </header>
+
+        {/* Main Section */}
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">
           {renderContent()}
-        </div>
+        </main>
       </div>
 
       {/* Edit Product Modal */}
-      {editModalOpen && (
+      {editModalOpen && selectedProduct && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-800/50 overflow-y-auto max-h-[90vh]">
+          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-800/50 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-white">Editar Producto</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Editar Producto</h2>
                 <button
                   onClick={() => setEditModalOpen(false)}
                   className="text-gray-400 hover:text-white transition-all duration-300"
@@ -2021,7 +1742,9 @@ const DashboardProvider = () => {
                 </button>
               </div>
               {editError && (
-                <div className="bg-red-900/50 text-red-400 p-3 rounded-xl mb-4">{editError}</div>
+                <div className="mb-4 p-3 bg-red-900/50 text-red-400 rounded-xl">
+                  {editError}
+                </div>
               )}
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2030,10 +1753,16 @@ const DashboardProvider = () => {
                     <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600/50 border-dashed rounded-xl bg-gray-700/50 backdrop-blur-sm">
                       {selectedProduct.image ? (
                         <div className="relative">
-                          <img src={selectedProduct.image} alt="Preview" className="mx-auto h-48 w-full object-contain" />
+                          <img
+                            src={selectedProduct.image}
+                            alt="Preview"
+                            className="mx-auto h-48 w-full object-contain"
+                          />
                           <button
                             type="button"
-                            onClick={() => setSelectedProduct({ ...selectedProduct, image: "" })}
+                            onClick={() =>
+                              setSelectedProduct({ ...selectedProduct, image: "" })
+                            }
                             className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
                           >
                             <FiX size={16} />
@@ -2057,13 +1786,13 @@ const DashboardProvider = () => {
                           </svg>
                           <div className="flex text-sm text-gray-400 justify-center">
                             <label
-                              htmlFor="file-upload-edit"
+                              htmlFor="edit-file-upload"
                               className="relative cursor-pointer bg-gray-800/50 rounded-xl font-medium text-cyan-400 hover:text-cyan-500 focus-within:outline-none"
                             >
                               <span>Subir una imagen</span>
                               <input
-                                id="file-upload-edit"
-                                name="file-upload-edit"
+                                id="edit-file-upload"
+                                name="edit-file-upload"
                                 type="file"
                                 className="sr-only"
                                 onChange={(e) => handleFileChange(e, true)}
@@ -2083,7 +1812,12 @@ const DashboardProvider = () => {
                         type="text"
                         name="name"
                         value={selectedProduct.name}
-                        onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+                        onChange={(e) =>
+                          setSelectedProduct({
+                            ...selectedProduct,
+                            name: e.target.value,
+                          })
+                        }
                         className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                         placeholder="Ej: Netflix Premium 1 mes"
                         required
@@ -2095,7 +1829,12 @@ const DashboardProvider = () => {
                         <select
                           name="category"
                           value={selectedProduct.category}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              category: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         >
                           <option value="Netflix">Netflix</option>
@@ -2134,7 +1873,12 @@ const DashboardProvider = () => {
                         <select
                           name="accountType"
                           value={selectedProduct.accountType}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, accountType: e.target.value })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              accountType: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         >
                           <option value="Premium">Premium</option>
@@ -2148,7 +1892,24 @@ const DashboardProvider = () => {
                         <select
                           name="status"
                           value={selectedProduct.status}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, status: e.target.value })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              status: e.target.value,
+                              stock: e.target.value === "Agotado" ? 0 : selectedProduct.stock,
+                              accounts:
+                                e.target.value === "En stock"
+                                  ? selectedProduct.accounts.length
+                                    ? selectedProduct.accounts
+                                    : Array(selectedProduct.stock || 1).fill({
+                                        email: "",
+                                        password: "",
+                                        profile: "",
+                                        pin: "",
+                                      })
+                                  : [],
+                            })
+                          }
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all"
                         >
                           <option value="En stock">En stock</option>
@@ -2177,7 +1938,12 @@ const DashboardProvider = () => {
                           type="number"
                           name="price"
                           value={selectedProduct.price}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              price: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                           placeholder="Ej: 9.99"
                           step="0.01"
@@ -2190,7 +1956,12 @@ const DashboardProvider = () => {
                           type="checkbox"
                           name="renewal"
                           checked={selectedProduct.renewal}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, renewal: e.target.checked })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              renewal: e.target.checked,
+                            })
+                          }
                           className="h-4 w-4 text-cyan-400 focus:ring-cyan-400 border-gray-600/50 rounded"
                         />
                         <label className="ml-2 text-gray-300">¿Tiene renovación?</label>
@@ -2203,7 +1974,12 @@ const DashboardProvider = () => {
                           type="number"
                           name="renewalPrice"
                           value={selectedProduct.renewalPrice}
-                          onChange={(e) => setSelectedProduct({ ...selectedProduct, renewalPrice: e.target.value })}
+                          onChange={(e) =>
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              renewalPrice: e.target.value,
+                            })
+                          }
                           className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                           placeholder="Ej: 8.99"
                           step="0.01"
@@ -2221,7 +1997,12 @@ const DashboardProvider = () => {
                       type="number"
                       name="duration"
                       value={selectedProduct.duration}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, duration: e.target.value })}
+                      onChange={(e) =>
+                        setSelectedProduct({
+                          ...selectedProduct,
+                          duration: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                       placeholder="Dejar vacío para ilimitado"
                       min="1"
@@ -2233,7 +2014,12 @@ const DashboardProvider = () => {
                       type="text"
                       name="providerPhone"
                       value={selectedProduct.providerPhone}
-                      onChange={(e) => setSelectedProduct({ ...selectedProduct, providerPhone: e.target.value })}
+                      onChange={(e) =>
+                        setSelectedProduct({
+                          ...selectedProduct,
+                          providerPhone: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                       placeholder="Ej: +51 987654321"
                       required={selectedProduct.status === "A pedido"}
@@ -2245,7 +2031,12 @@ const DashboardProvider = () => {
                   <textarea
                     name="details"
                     value={selectedProduct.details}
-                    onChange={(e) => setSelectedProduct({ ...selectedProduct, details: e.target.value })}
+                    onChange={(e) =>
+                      setSelectedProduct({
+                        ...selectedProduct,
+                        details: e.target.value,
+                      })
+                    }
                     rows="3"
                     className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                     placeholder="Describe los detalles y características del producto"
@@ -2256,7 +2047,12 @@ const DashboardProvider = () => {
                   <textarea
                     name="terms"
                     value={selectedProduct.terms}
-                    onChange={(e) => setSelectedProduct({ ...selectedProduct, terms: e.target.value })}
+                    onChange={(e) =>
+                      setSelectedProduct({
+                        ...selectedProduct,
+                        terms: e.target.value,
+                      })
+                    }
                     rows="3"
                     className="w-full px-4 py-2 rounded-xl bg-gray-700/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all placeholder-gray-500"
                     placeholder="Especifica los términos y condiciones de uso"
@@ -2268,7 +2064,10 @@ const DashboardProvider = () => {
                     <p className="text-xs text-gray-400 mb-3">Debe completar todas las cuentas según el stock indicado</p>
                     <div className="space-y-4">
                       {selectedProduct.accounts.map((account, index) => (
-                        <div key={index} className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm">
+                        <div
+                          key={index}
+                          className="border border-gray-600/50 rounded-xl p-4 bg-gray-700/50 backdrop-blur-sm"
+                        >
                           <h4 className="text-sm font-medium text-white mb-3">Cuenta {index + 1}</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -2276,7 +2075,9 @@ const DashboardProvider = () => {
                               <input
                                 type="email"
                                 value={account.email}
-                                onChange={(e) => handleEditAccountFieldChange(index, "email", e.target.value)}
+                                onChange={(e) =>
+                                  handleEditAccountFieldChange(index, "email", e.target.value)
+                                }
                                 className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                                 required
                               />
@@ -2286,7 +2087,9 @@ const DashboardProvider = () => {
                               <input
                                 type="text"
                                 value={account.password}
-                                onChange={(e) => handleEditAccountFieldChange(index, "password", e.target.value)}
+                                onChange={(e) =>
+                                  handleEditAccountFieldChange(index, "password", e.target.value)
+                                }
                                 className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                                 required
                               />
@@ -2296,7 +2099,9 @@ const DashboardProvider = () => {
                               <input
                                 type="text"
                                 value={account.profile}
-                                onChange={(e) => handleEditAccountFieldChange(index, "profile", e.target.value)}
+                                onChange={(e) =>
+                                  handleEditAccountFieldChange(index, "profile", e.target.value)
+                                }
                                 className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                                 placeholder="Ej: Perfil 1"
                               />
@@ -2306,7 +2111,9 @@ const DashboardProvider = () => {
                               <input
                                 type="text"
                                 value={account.pin}
-                                onChange={(e) => handleEditAccountFieldChange(index, "pin", e.target.value)}
+                                onChange={(e) =>
+                                  handleEditAccountFieldChange(index, "pin", e.target.value)
+                                }
                                 className="w-full px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-600/50 focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
                                 placeholder="Ej: 1234"
                               />
@@ -2338,12 +2145,12 @@ const DashboardProvider = () => {
       )}
 
       {/* Edit Order Modal */}
-      {editOrderModalOpen && (
+      {editOrderModalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-800/50">
+          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md border border-gray-800/50">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-white">Editar Detalles de la Cuenta</h2>
+                <h2 className="text-xl font-bold text-white">Editar Detalles de Cuenta</h2>
                 <button
                   onClick={() => setEditOrderModalOpen(false)}
                   className="text-gray-400 hover:text-white transition-all duration-300"
@@ -2352,7 +2159,9 @@ const DashboardProvider = () => {
                 </button>
               </div>
               {editOrderError && (
-                <div className="bg-red-900/50 text-red-400 p-3 rounded-xl mb-4">{editOrderError}</div>
+                <div className="mb-4 p-3 bg-red-900/50 text-red-400 rounded-xl">
+                  {editOrderError}
+                </div>
               )}
               <div className="space-y-4">
                 <div>
@@ -2410,7 +2219,7 @@ const DashboardProvider = () => {
                     onClick={handleUpdateOrder}
                     className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-medium rounded-xl transition-all duration-300"
                   >
-                    Actualizar
+                    Guardar Cambios
                   </button>
                 </div>
               </div>
